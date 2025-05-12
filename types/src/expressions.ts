@@ -10,9 +10,12 @@ export type Expression =
   | ColumnReferenceExpression
   | ConstantValueExpression
   | WindowFunctionExpression
-  | UnaryStringExpression
+  | ExtendedUnaryStringExpression
   | StringDistanceExpression
-  | FuzzyStringFilterExpression;
+  | FuzzyStringFilterExpression
+  | WhenThenOtherwiseExpression
+  | SubstringExpression
+  | MinMaxExpression;
 
 /** Represents all possible expression types in the system. */
 export type ComparisonOperator = 'gt' | 'ge' | 'eq' | 'lt' | 'le' | 'neq';
@@ -164,9 +167,9 @@ export interface WindowFunctionExpression {
 export type UnaryStringOperator = 'to_upper' | 'to_lower';
 
 /** Represents a unary string operation on a single expression. */
-export interface UnaryStringExpression {
-  /** The type of unary string operation (e.g., 'to_upper', 'to_lower'). */
-  type: UnaryStringOperator;
+export interface ExtendedUnaryStringExpression {
+  /** The type of unary string operation (e.g., 'to_upper', 'to_lower', 'str_len'). */
+  type: UnaryStringOperator | 'str_len';
   /** The string expression to operate on. */
   value: Expression;
 }
@@ -219,4 +222,61 @@ export interface FuzzyStringFilterExpression {
   pattern: Expression;
   /** The maximum allowed distance for a match (inclusive). */
   bound: number;
+}
+
+/**
+ * Represents a single "when" condition and its corresponding "then" result expression.
+ * Used within the WhenThenOtherwiseExpression.
+ */
+export interface WhenThenClause {
+  /** The condition expression. Should evaluate to a boolean. */
+  when: Expression;
+  /** The result expression if the 'when' condition is true. */
+  then: Expression;
+}
+
+/**
+ * Represents a conditional expression that evaluates a series of "when"
+ * conditions and returns the corresponding "then" expression's value.
+ * If no "when" condition is met, it returns the value of the "otherwise" expression.
+ * This mimics Polars' when/then/otherwise functionality.
+ */
+export interface WhenThenOtherwiseExpression {
+  /** The type of operation, always 'when_then_otherwise'. */
+  type: 'when_then_otherwise';
+  /** An array of "when/then" clauses to be evaluated in order. */
+  conditions: WhenThenClause[];
+  /** The expression whose value is returned if none of the "when" conditions are met. */
+  otherwise: Expression;
+}
+
+/** Represents a substring extraction operation on an expression. */
+export interface SubstringExpression {
+  /** The type of operation, always 'substring'. */
+  type: 'substring';
+  /** The expression whose string value will be used. */
+  value: Expression;
+  /** The starting position (0-indexed). */
+  start: number;
+  /** The length of the substring. Mutually exclusive with 'end_position'. */
+  length?: number;
+  /** The end position of the substring (exclusive). Mutually exclusive with 'length'. */
+  end_position?: number;
+  /**
+   * If true and the requested substring extends beyond the string's length,
+   * the end of the substring will be adjusted to the end of the string.
+   * If false (default), an error or out-of-bounds behavior might occur depending on the engine.
+   */
+  adjust_right_boundary?: boolean;
+}
+
+/** Defines the supported min/max operators. */
+export type MinMaxOperator = 'min' | 'max';
+
+/** Represents a min or max operation on a list of expressions. */
+export interface MinMaxExpression {
+  /** The type of operation ('min' or 'max'). */
+  type: MinMaxOperator;
+  /** An array of expressions to find the minimum or maximum value from. */
+  operands: Expression[];
 }

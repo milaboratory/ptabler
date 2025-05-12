@@ -1,5 +1,5 @@
 {
-  "name": "@milaboratories/milaboratories.software-ptabler.types",
+  "name": "@milaboratories/software-ptabler.types",
   "version": "1.0.0",
   "description": "Type definitions for PTabler",
   "types": "./dist/index.d.ts",

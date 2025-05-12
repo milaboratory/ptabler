@@ -1,5 +1,6 @@
 packages:
   - types
+  - software
 
 catalog:
   '@platforma-sdk/tengo-builder': ^2.1.3

@@ -1,0 +1,39 @@
+workflow:
+  - type: read_csv
+    file: "ptabler/software/test_data/test_data_1.tsv"
+    name: "data_table"
+    delimiter: "\\t"
+    schema:
+      - { column: "id", type: "String", null_value: "" }
+      - { column: "name", type: "String", null_value: "" }
+      - { column: "category", type: "String" }
+      - { column: "value1", type: "Float64", null_value: "" }
+      - { column: "value2", type: "Int64" }
+      - { column: "is_active", type: "Boolean", null_value: "" }
+      - { column: "description", type: "String", null_value: "" }
+      - { column: "group_key", type: "String" }
+      - { column: "join_id", type: "String" }
+      - { column: "dna_sequence", type: "String" }
+      - { column: "aa_sequence", type: "String" }
+
+  - type: filter
+    input_table: "data_table"
+    output_table: "filtered_table"
+    condition:
+      type: "eq"
+      lhs: { type: "col", name: "is_active" }
+      rhs: { type: "const", value: true }
+
+  - type: add_columns
+    table: "filtered_table" # Modifies filtered_table in-place
+    columns:
+      - name: "value1_doubled"
+        expression:
+          type: "multiply"
+          lhs: { type: "col", name: "value1" }
+          rhs: { type: "const", value: 2 }
+
+  - type: write_csv
+    table: "filtered_table"
+    file: "ptabler/software/test_data/output_simple_pipeline.tsv"
+    delimiter: "\\t"
