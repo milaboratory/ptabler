@@ -9,7 +9,8 @@ export type Expression =
   | HashExpression
   | ColumnReferenceExpression
   | ConstantValueExpression
-  | WindowFunctionExpression
+  | RankExpression
+  | CumsumExpression
   | ExtendedUnaryStringExpression
   | StringDistanceExpression
   | FuzzyStringFilterExpression
@@ -120,11 +121,13 @@ export type HashEncoding = 'hex' | 'base64';
 /** Represents a hashing operation on an expression. */
 export interface HashExpression {
   /** The specific type of hash algorithm to apply. */
-  type: HashType;
-  /** The expression whose value will be hashed. */
-  value: Expression;
+  type: 'hash';
+  /** The type of hash algorithm to apply. */
+  hashType: HashType;
   /** The encoding for the output hash string. */
   encoding: HashEncoding;
+  /** The expression whose value will be hashed. */
+  value: Expression;
 }
 
 /** Represents a reference to a column by its name. */
@@ -143,24 +146,38 @@ export interface ConstantValueExpression {
   value: string | number | boolean | null;
 }
 
-/** Defines how a column should be ordered, either by name or by an object specifying column and direction. */
-export type OrderBy = string | { column: string; descending?: boolean };
+/**
+ * Represents a rank function applied over a dataset partition.
+ * Calculates the rank of each row within its partition based on the specified ordering.
+ */
+export interface RankExpression {
+  /** The type of operation, always 'rank'. */
+  type: 'rank';
+  /** List of expressions to partition the data by before ranking. The output of these expressions will be used for partitioning. */
+  partition_by: Expression[];
+  /** Defines the ordering expressions within partitions to determine the rank. */
+  order_by: Expression[];
+  /** Whether to sort in descending order. Defaults to false (ascending). */
+  descending?: boolean;
+}
 
-/** Defines the supported window functions. */
-export type WindowFunction =
-  | 'rank'
-  | 'cumsum';
-
-/** Represents a window function applied over a dataset partition. */
-export interface WindowFunctionExpression {
-  /** The type of window function (e.g., 'rank', 'cumsum'). */
-  type: WindowFunction;
-  /** The expression on which the window function is applied. */
-  input_expression: Expression;
-  /** List of column names to partition the data by. */
-  partition_by: string[];
-  /** Defines the ordering within partitions, can be a single column name, an OrderBy object, or an array of OrderBy objects. */
-  order_by: OrderBy | OrderBy[];
+/**
+ * Represents a cumulative sum function applied over a dataset partition.
+ * Calculates the cumulative sum of the 'value' expression within each partition,
+ * based on the specified ordering. Values are sorted by value and then by
+ * additional_order_by before summing.
+ */
+export interface CumsumExpression {
+  /** The type of operation, always 'cumsum'. */
+  type: 'cumsum';
+  /** The expression whose values will be cumulatively summed. */
+  value: Expression;
+  /** Defines additional ordering within partitions for the cumulative sum calculation, in addition to the ordering of the values themselves. */
+  additional_order_by: Expression[];
+  /** List of expressions to partition the data by before calculating the cumulative sum. The output of these expressions will be used for partitioning. */
+  partition_by: Expression[];
+  /** Whether to sort in descending order. Defaults to false (ascending). */
+  descending?: boolean;
 }
 
 /** Defines the supported unary string operators. */
@@ -250,7 +267,17 @@ export interface WhenThenOtherwiseExpression {
   otherwise: Expression;
 }
 
-/** Represents a substring extraction operation on an expression. */
+/**
+ * Represents a substring extraction operation on an expression.
+ * Extracts a portion of the string value resulting from the 'value' expression.
+ * The substring starts at the 'start' index (0-based).
+ * - If 'length' is provided, it specifies the maximum length of the substring.
+ * - If 'end' is provided, it specifies the index *before* which the substring ends.
+ * - If neither 'length' nor 'end' is provided, the substring extends to the end of the string.
+ * - 'length' and 'end' are mutually exclusive.
+ * If the requested substring range extends beyond the actual string length,
+ * the extraction automatically stops at the end of the string.
+ */
 export interface SubstringExpression {
   /** The type of operation, always 'substring'. */
   type: 'substring';
@@ -258,16 +285,10 @@ export interface SubstringExpression {
   value: Expression;
   /** The starting position (0-indexed). */
   start: number;
-  /** The length of the substring. Mutually exclusive with 'end_position'. */
+  /** The length of the substring. Mutually exclusive with 'end'. */
   length?: number;
   /** The end position of the substring (exclusive). Mutually exclusive with 'length'. */
-  end_position?: number;
-  /**
-   * If true and the requested substring extends beyond the string's length,
-   * the end of the substring will be adjusted to the end of the string.
-   * If false (default), an error or out-of-bounds behavior might occur depending on the engine.
-   */
-  adjust_right_boundary?: boolean;
+  end?: number;
 }
 
 /** Defines the supported min/max operators. */

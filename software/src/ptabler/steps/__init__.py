@@ -1,4 +1,4 @@
-from .base_types import PStep, GlobalSettings, TableSpace
+from .base import PStep, GlobalSettings, TableSpace
 from .io import ReadCsv, WriteCsv
 
 from typing import Union

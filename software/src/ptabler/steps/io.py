@@ -3,7 +3,7 @@ import os
 from typing import List, Optional, Dict, Mapping, Any 
 import msgspec
 
-from .base_types import GlobalSettings, PStep, TableSpace
+from .base import GlobalSettings, PStep, TableSpace
 from .util import normalize_path
 
 # Mapping from PolarsDataType string representations (from TS) to actual Polars dtypes
