@@ -23,7 +23,7 @@ class RankExpression(Expression, tag='rank', rename="camel"):
             raise ValueError(
                 "RankExpression requires at least one 'order_by' expression.")
 
-        rank_expr = pl.struct(self.order_by).rank(
+        rank_expr = pl.struct(polars_order_exprs).rank(
             "ordinal", descending=self.descending)
 
         if polars_partitions:

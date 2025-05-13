@@ -1,5 +1,5 @@
-polars-lts-cpu==1.27.1
-polars-ds==0.3.5
+polars==1.29.0
+polars-ds==0.8.3
 polars-hash==0.5.4
 msgspec==0.18.6
 PyYAML==6.0.2

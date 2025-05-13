@@ -46,7 +46,7 @@ class StringDistanceExpression(Expression, tag='string_distance', rename="camel"
                 )
             case "jaro_winkler":
                 return pds.str_jw(
-                    s1_polars, s2_polars, return_sim=self.return_similarity or False
+                    s1_polars, s2_polars
                 )
             case _:
                 # Should be unreachable due to Literal typing

@@ -7,61 +7,62 @@ from .base import Expression
 
 
 # Comparison Expressions
-ComparisonOperator = typing.Literal['gt', 'ge', 'eq', 'lt', 'le', 'neq']
 
-_COMPARISON_OPERATORS_MAP: typing.Mapping[ComparisonOperator, typing.Callable[[pl.Expr, pl.Expr], pl.Expr]] = {
-    "gt": operator.gt,
-    "ge": operator.ge,
-    "eq": operator.eq,
-    "lt": operator.lt,
-    "le": operator.le,
-    "neq": operator.ne,
-}
-
-class GtExpression(Expression, tag='gt', tag_field="type", rename="camel"):
+class BinaryOperatorExpression(Expression):
     lhs: Expression
     rhs: Expression
 
+class GtExpression(BinaryOperatorExpression, tag='gt'):
     def to_polars(self) -> pl.Expr:
-        op = _COMPARISON_OPERATORS_MAP[self.type]
-        return op(self.lhs.to_polars(), self.rhs.to_polars())
+        return self.lhs.to_polars() > self.rhs.to_polars()
 
-class GeExpression(GtExpression, tag='ge'): pass
-class EqExpression(GtExpression, tag='eq'): pass
-class LtExpression(GtExpression, tag='lt'): pass
-class LeExpression(GtExpression, tag='le'): pass
-class NeqExpression(GtExpression, tag='neq'): pass
+class GeExpression(BinaryOperatorExpression, tag='ge'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() >= self.rhs.to_polars()
+
+class EqExpression(BinaryOperatorExpression, tag='eq'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() == self.rhs.to_polars()
+
+class LtExpression(BinaryOperatorExpression, tag='lt'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() < self.rhs.to_polars()
+
+class LeExpression(BinaryOperatorExpression, tag='le'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() <= self.rhs.to_polars()
+
+class NeqExpression(BinaryOperatorExpression, tag='neq'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() != self.rhs.to_polars()
 
 
 # Binary Arithmetic Expressions
-BinaryArithmeticOperator = typing.Literal['plus', 'minus', 'multiply', 'truediv', 'floordiv']
 
-_BINARY_ARITHMETIC_OPERATORS_MAP: typing.Mapping[BinaryArithmeticOperator, typing.Callable[[pl.Expr, pl.Expr], pl.Expr]] = {
-    "plus": operator.add,
-    "minus": operator.sub,
-    "multiply": operator.mul,
-    "truediv": operator.truediv,
-    "floordiv": operator.floordiv,
-}
-
-class PlusExpression(Expression, tag='plus', tag_field="type", rename="camel"):
-    lhs: Expression
-    rhs: Expression
-
+class PlusExpression(BinaryOperatorExpression, tag='plus'):
     def to_polars(self) -> pl.Expr:
-        op = _BINARY_ARITHMETIC_OPERATORS_MAP[self.type]
-        return op(self.lhs.to_polars(), self.rhs.to_polars())
+        return self.lhs.to_polars() + self.rhs.to_polars()
 
-class MinusExpression(PlusExpression, tag='minus'): pass
-class MultiplyExpression(PlusExpression, tag='multiply'): pass
-class TrueDivExpression(PlusExpression, tag='truediv'): pass
-class FloorDivExpression(PlusExpression, tag='floordiv'): pass
+class MinusExpression(BinaryOperatorExpression, tag='minus'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() - self.rhs.to_polars()
+
+class MultiplyExpression(BinaryOperatorExpression, tag='multiply'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() * self.rhs.to_polars()
+
+class TrueDivExpression(BinaryOperatorExpression, tag='truediv'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() / self.rhs.to_polars()
+
+class FloorDivExpression(BinaryOperatorExpression, tag='floordiv'):
+    def to_polars(self) -> pl.Expr:
+        return self.lhs.to_polars() // self.rhs.to_polars()
 
 
 # Unary Arithmetic Expressions
-UnaryArithmeticOperator = typing.Literal['log10', 'log', 'log2', 'abs', 'sqrt', 'minus']
 
-class UnaryArithmeticBaseExpression(Expression, tag_field="type", rename="camel"):
+class UnaryArithmeticBaseExpression(Expression):
     value: Expression
 
 class Log10Expression(UnaryArithmeticBaseExpression, tag='log10'):
@@ -91,7 +92,7 @@ class UnaryMinusExpression(UnaryArithmeticBaseExpression, tag='minus'):
 
 # Boolean Logic Expressions
 
-class AndExpression(Expression, tag='and', rename="camel"):
+class AndExpression(Expression, tag='and'):
     operands: list[Expression]
 
     def to_polars(self) -> pl.Expr:
@@ -101,7 +102,7 @@ class AndExpression(Expression, tag='and', rename="camel"):
              return pl.lit(True)
         return pl.all_horizontal(polars_operands)
 
-class OrExpression(Expression, tag='or', rename="camel"):
+class OrExpression(Expression, tag='or'):
     operands: list[Expression]
 
     def to_polars(self) -> pl.Expr:
@@ -113,7 +114,7 @@ class OrExpression(Expression, tag='or', rename="camel"):
 
 
 # Not Expression
-class NotExpression(Expression, tag='not', rename="camel"):
+class NotExpression(Expression, tag='not'):
     value: Expression
 
     def to_polars(self) -> pl.Expr:
@@ -123,13 +124,13 @@ class NotExpression(Expression, tag='not', rename="camel"):
 
 # Null Check Expressions
 
-class IsNaExpression(Expression, tag='is_na', rename="camel"):
+class IsNaExpression(Expression, tag='is_na'):
     value: Expression
 
     def to_polars(self) -> pl.Expr:
         return self.value.to_polars().is_null()
 
-class IsNotNaExpression(Expression, tag='is_not_na', rename="camel"):
+class IsNotNaExpression(Expression, tag='is_not_na'):
     value: Expression
 
     def to_polars(self) -> pl.Expr:
@@ -137,7 +138,7 @@ class IsNotNaExpression(Expression, tag='is_not_na', rename="camel"):
 
 
 # Column Reference Expression
-class ColumnReferenceExpression(Expression, tag='col', rename="camel"):
+class ColumnReferenceExpression(Expression, tag='col'):
     name: str
 
     def to_polars(self) -> pl.Expr:
@@ -145,7 +146,7 @@ class ColumnReferenceExpression(Expression, tag='col', rename="camel"):
 
 
 # Constant Value Expression
-class ConstantValueExpression(Expression, tag='const', rename="camel"):
+class ConstantValueExpression(Expression, tag='const'):
     value: typing.Union[str, int, float, bool, None]
 
     def to_polars(self) -> pl.Expr:
@@ -154,7 +155,7 @@ class ConstantValueExpression(Expression, tag='const', rename="camel"):
 
 # Min/Max Expressions
 
-class MinExpression(Expression, tag='min', rename="camel"):
+class MinExpression(Expression, tag='min'):
     operands: list[Expression]
 
     def to_polars(self) -> pl.Expr:
@@ -163,7 +164,7 @@ class MinExpression(Expression, tag='min', rename="camel"):
             return pl.lit(None)
         return pl.min_horizontal(polars_operands)
 
-class MaxExpression(Expression, tag='max', rename="camel"):
+class MaxExpression(Expression, tag='max'):
     operands: list[Expression]
 
     def to_polars(self) -> pl.Expr:

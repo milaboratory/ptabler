@@ -18,14 +18,14 @@ class PWorkflow(msgspec.Struct):
     workflow: List[AnyPStep]
 
     @overload
-    def execute(self, global_settings: GlobalSettings) -> None:
+    def execute(self, global_settings: GlobalSettings, initial_table_space: TableSpace | None = None) -> None:
         ...
 
     @overload
-    def execute(self, global_settings: GlobalSettings, lazy: Literal[True]) -> Tuple[TableSpace, List[pl.LazyFrame]]:
+    def execute(self, global_settings: GlobalSettings, lazy: Literal[True], initial_table_space: TableSpace | None = None) -> Tuple[TableSpace, List[pl.LazyFrame]]:
         ...
 
-    def execute(self, global_settings: GlobalSettings, lazy: bool = False) -> Union[None, Tuple[TableSpace, List[pl.LazyFrame]]]:
+    def execute(self, global_settings: GlobalSettings, lazy: bool = False, initial_table_space: TableSpace | None = None) -> Union[None, Tuple[TableSpace, List[pl.LazyFrame]]]:
         """
         Executes all steps in the workflow sequentially.
 
@@ -56,13 +56,16 @@ class PWorkflow(msgspec.Struct):
                              directory for resolving file paths within steps.
             lazy: If True, skips the final `pl.collect_all()` and returns
                   the tablespace and sink lazyframes. Defaults to False.
+            initial_table_space: An optional `TableSpace` to initialize the
+                                 workflow's table space. If None, an empty
+                                 tablespace is created. Defaults to None.
 
         Returns:
             If `lazy` is True, returns a tuple containing the final
             `TableSpace` and the list of all sink `pl.LazyFrame`s.
             If `lazy` is False, executes sink operations and returns `None`.
         """
-        table_space: TableSpace = {}
+        table_space: TableSpace = initial_table_space if initial_table_space is not None else {}
         all_sink_lazyframes: List[pl.LazyFrame] = []
 
         for step_obj in self.workflow:
