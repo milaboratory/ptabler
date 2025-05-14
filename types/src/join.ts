@@ -23,6 +23,12 @@ export interface JoinStep {
 
   /** The type of join to perform. */
   how: JoinStrategy;
+
+  /** An optional record to select and rename columns from the left table. */
+  leftColumns?: Record<string, string>;
+
+  /** An optional record to select and rename columns from the right table. */
+  rightColumns?: Record<string, string>;
 }
 
 /**
@@ -44,6 +50,12 @@ export interface CrossJoinStep {
 
   /** The type of join to perform, which is always "cross" for this operation. */
   how: 'cross';
+
+  /** An optional record to select and rename columns from the left table. */
+  leftColumns?: Record<string, string>;
+
+  /** An optional record to select and rename columns from the right table. */
+  rightColumns?: Record<string, string>;
 }
 
 /** Defines the possible join strategies for a standard join operation (excluding cross join). */

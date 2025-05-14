@@ -18,6 +18,9 @@ class Join(PStep, tag="join"):
     left_on: Optional[list[str]] = None
     # Optional, as not needed for cross join
     right_on: Optional[list[str]] = None
+    # Optional fields to select and rename columns
+    left_columns: Optional[dict[str, str]] = None
+    right_columns: Optional[dict[str, str]] = None
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -46,6 +49,16 @@ class Join(PStep, tag="join"):
 
         left_lf = table_space[self.left_table]
         right_lf = table_space[self.right_table]
+
+        if self.left_columns:
+            left_lf = left_lf.select(
+                [pl.col(original_name).alias(new_name) for original_name, new_name in self.left_columns.items()]
+            )
+
+        if self.right_columns:
+            right_lf = right_lf.select(
+                [pl.col(original_name).alias(new_name) for original_name, new_name in self.right_columns.items()]
+            )
 
         joined_lf: pl.LazyFrame
 
