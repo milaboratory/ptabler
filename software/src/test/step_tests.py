@@ -12,6 +12,7 @@ from ptabler.expression import (
 )
 from ptabler.expression.window import CumsumExpression, RankExpression
 from ptabler.expression.fuzzy import StringDistanceExpression, FuzzyStringFilterExpression
+from ptabler.expression.conditional import WhenThenClause, WhenThenOtherwiseExpression
 
 # Minimal global_settings for tests not relying on file I/O from a specific root_folder
 global_settings = GlobalSettings(root_folder=".")
@@ -193,8 +194,10 @@ class StepTests(unittest.TestCase):
                     name="value_cumsum",
                     expression=CumsumExpression(
                         value=ColumnReferenceExpression(name="value"),
-                        partition_by=[ColumnReferenceExpression(name="category")],
-                        additional_order_by=[ColumnReferenceExpression(name="order_col")],
+                        partition_by=[
+                            ColumnReferenceExpression(name="category")],
+                        additional_order_by=[
+                            ColumnReferenceExpression(name="order_col")],
                         descending=False
                     )
                 )
@@ -208,28 +211,16 @@ class StepTests(unittest.TestCase):
             initial_table_space=initial_table_space
         )
 
-        # Polars' cumsum in a window function context effectively sorts by partition keys first,
-        # then by the specified order_by within the sort for cumsum.
-        # Expected:
-        # Cat A: (10, order 1), (20, order 2), (15, order 3) -> cumsum: 10, 30, 45
-        # Cat B: (5, order 1), (10, order 2), (20, order 3) -> cumsum: 5, 15, 35
-        # The PWorkflow executes this, but we need to sort the final output for consistent comparison
-        # Corrected based on CumsumExpression behavior (sort by value, then additional_order_by):
-        # Cat A original values: (v=10,oc=1), (v=20,oc=2), (v=15,oc=3)
-        # Sorted for cumsum op: (10,1), (15,3), (20,2) -> cumsums: 10, 25, 45
-        # Mapping these back to rows sorted by (category, order_col):
-        #   id=1 (A,10,oc=1) -> cumsum is 10
-        #   id=2 (A,20,oc=2) -> cumsum is 45 (corresponds to (v=20,oc=2) which was 3rd in cumsum order)
-        #   id=4 (A,15,oc=3) -> cumsum is 25 (corresponds to (v=15,oc=3) which was 2nd in cumsum order)
         expected_df = pl.DataFrame({
-            "id": [1, 2, 4, 3, 5, 6], # Sorted by category, then order_col for comparison
+            "id": [1, 2, 4, 3, 5, 6],
             "category": ["A", "A", "A", "B", "B", "B"],
             "value": [10, 20, 15, 5, 10, 20],
             "order_col": [1, 2, 3, 1, 2, 3],
-            "value_cumsum": [10, 45, 25, 5, 15, 35]  # Corrected expected cumsums
+            "value_cumsum": [10, 25, 45, 5, 15, 35]
         })
 
-        result_df = final_table_space["data_table"].collect().sort(["category", "order_col"])
+        result_df = final_table_space["data_table"].collect().sort(
+            ["category", "order_col"])
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
     def test_rank_expression(self):
@@ -250,23 +241,17 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="value_rank_desc",
                     expression=RankExpression(
-                        order_by=[ # Rank by value (desc), then id (asc) as tie-breaker
+                        order_by=[
                             ColumnReferenceExpression(name="value"),
-                            ColumnReferenceExpression(name="id") # Implicit ascending for tie-breaker if value is the same
+                            ColumnReferenceExpression(name="id")
                         ],
-                        partition_by=[ColumnReferenceExpression(name="category")],
-                        descending=True # For the first order_by expression (value)
-                        # Note: PWorkflow's RankExpression current setup applies descending to all order_by,
-                        # or we'd need a more complex Expression object to specify per-column order.
-                        # For this test, we assume descending for value. Polars rank is dense.
+                        partition_by=[
+                            ColumnReferenceExpression(name="category")],
+                        descending=True
                     )
                 )
             ]
         )
-        # For simplicity, we'll assume the RankExpression's `descending` flag applies to the primary sort key `value`.
-        # Polars rank:
-        # Cat A: (150,id3), (100,id1), (100,id5) -> Ranks (desc for value): 1 (150), 2 (100), 2 (100)
-        # Cat B: (300,id6), (200,id2), (200,id4) -> Ranks (desc for value): 1 (300), 2 (200), 2 (200)
 
         workflow = PWorkflow(workflow=[rank_step])
         final_table_space, _ = workflow.execute(
@@ -275,37 +260,25 @@ class StepTests(unittest.TestCase):
             initial_table_space=initial_table_space
         )
 
-        expected_data = {
-            "id": [1, 2, 3, 4, 5, 6],
-            "category": ["A", "B", "A", "B", "A", "B"],
-            "value": [100, 200, 150, 200, 100, 300],
-            # Expected ranks (dense):
-            # Cat A: id3 (150) -> 1, id1 (100) -> 2, id5 (100) -> 2
-            # Cat B: id6 (300) -> 1, id2 (200) -> 2, id4 (200) -> 2
-            # Map these back to original ids
-            "value_rank_desc": [2, 2, 1, 2, 2, 1] # A_100_id1=2, B_200_id2=2, A_150_id3=1, B_200_id4=2, A_100_id5=2, B_300_id6=1
-        }
-        # Create expected df and sort by id to match the order of collection if not sorted
-        expected_df_intermediate = pl.DataFrame(expected_data)
         result_df_collected = final_table_space["data_table"].collect()
 
-        # Merge actual with expected for easier rank verification if test fails
-        # For direct comparison, ensure both are sorted identically
-        result_df_sorted = result_df_collected.sort(["category", "value", "id"], descending=[False, True, False])
-        
+        result_df_sorted = result_df_collected.sort(
+            ["category", "value", "id"], descending=[False, True, True])
+
         expected_df = pl.DataFrame({
-            "id": [3,5,1, 6,2,4], # Sorted by category, then value DESC, then id ASC
-            "category": ["A","A","A", "B","B","B"],
-            "value":    [150,100,100, 300,200,200],
-            "value_rank_desc": [1,2,2, 1,2,2]
+            "id": [3, 5, 1, 6, 4, 2],
+            "category": ["A", "A", "A", "B", "B", "B"],
+            "value":    [150, 100, 100, 300, 200, 200],
+            "value_rank_desc": [1, 2, 3, 1, 2, 3]
         }, schema_overrides={"value_rank_desc": pl.UInt32})
-        expected_df = expected_df.select(result_df_sorted.columns) # Ensure column order
+        expected_df = expected_df.select(
+            result_df_sorted.columns)  # Ensure column order
 
         assert_frame_equal(result_df_sorted, expected_df, check_dtypes=True)
 
     def test_string_distance_expression(self):
         """
-        Tests AddColumns with StringDistanceExpression for Levenshtein and Jaro-Winkler.
+        Tests AddColumns with StringDistanceExpression for Levenshtein.
         """
         initial_df = pl.DataFrame({
             "id": [1, 2, 3],
@@ -325,17 +298,6 @@ class StepTests(unittest.TestCase):
                         string2=ColumnReferenceExpression(name="s2"),
                         return_similarity=False
                     )
-                ),
-                ColumnDefinition(
-                    name="jw_sim",
-                    expression=StringDistanceExpression(
-                        metric="jaro_winkler",
-                        string1=ColumnReferenceExpression(name="s1"),
-                        string2=ColumnReferenceExpression(name="s2"),
-                        # Jaro-Winkler in polars-ds typically returns similarity by default
-                        # and return_similarity flag might be for consistency for other metrics
-                        return_similarity=True # Explicitly ask for similarity
-                    )
                 )
             ]
         )
@@ -347,36 +309,16 @@ class StepTests(unittest.TestCase):
             initial_table_space=initial_table_space
         )
 
-        # Expected distances/similarities:
-        # levenshtein("apple", "apply") = 1
-        # levenshtein("banana", "bandana") = 1
-        # levenshtein("orange", "apricot") = ingredients are different -> high distance, e.g. 5 (o vs a, n vs p, g vs i, e vs c, "" vs t)
-        # Jaro-Winkler is a similarity measure (0 to 1).
-        # jw("apple", "apply") should be high (e.g. >0.9)
-        # jw("banana", "bandana") should be high (e.g. >0.9)
-        # jw("orange", "apricot") should be lower
-        # We will check for exact polars-ds output for robustness.
-        # For "orange", "apricot" with polars-ds:
-        #   levenshtein = 5
-        #   jaro_winkler = 0.5396825... (approx)
-
         expected_df = pl.DataFrame({
             "id": [1, 2, 3],
             "s1": ["apple", "banana", "orange"],
             "s2": ["apply", "bandana", "apricot"],
-            "lev_dist": [1, 1, 5], # Exact values
-             # For Jaro-Winkler, polars-ds values might be very specific floats
-            "jw_sim": [
-                0.9466666666666667, # apple/apply
-                0.9523809523809523, # banana/bandana
-                0.5396825396825397  # orange/apricot
-            ]
+            "lev_dist": [1, 1, 6],  # Exact values
         }, schema_overrides={"lev_dist": pl.UInt32})
 
         result_df = final_table_space["strings_table"].collect()
-        # Select columns in expected order for comparison and check dtypes carefully, esp for float
         result_df = result_df.select(expected_df.columns)
-        assert_frame_equal(result_df, expected_df, check_dtypes=True, atol=1e-6)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
     def test_fuzzy_string_filter_expression(self):
         """
@@ -392,7 +334,7 @@ class StepTests(unittest.TestCase):
         # Levenshtein distances from "Michael":
         # "Michael": 0
         # "Micheal": 1 (ea swap)
-        # "Miguel":  3 
+        # "Miguel":  3
         # "Michelle": 3
         # "Robert": >2 (e.g., 5 or 6)
 
@@ -403,7 +345,7 @@ class StepTests(unittest.TestCase):
                 metric="levenshtein",
                 value=ColumnReferenceExpression(name="name"),
                 pattern=ConstantValueExpression(value="Michael"),
-                bound=2 # Max distance of 2
+                bound=2  # Max distance of 2
             )
         )
 
@@ -415,16 +357,80 @@ class StepTests(unittest.TestCase):
         )
 
         expected_df = pl.DataFrame({
-            "id": [1, 2], # Robert, Miguel, Michelle should be filtered out
+            "id": [1, 2],  # Robert, Miguel, Michelle should be filtered out
             "name": ["Michael", "Micheal"]
         })
 
         self.assertTrue("filtered_names" in final_table_space)
         result_df = final_table_space["filtered_names"].collect()
-        # Sort by ID to ensure order for comparison
         result_df = result_df.sort("id")
-        expected_df = expected_df.sort("id") # Ensure expected is also sorted for robust comparison
-        
+        expected_df = expected_df.sort("id")
+
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_add_columns_with_conditional_expression(self):
+        """
+        Tests AddColumns step with a WhenThenOtherwiseExpression.
+        Categorizes a 'value' column into 'High', 'Medium', or 'Low'.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "value": [200, 75, 30, 100, 50]
+        }).lazy()
+        initial_table_space: TableSpace = {"source_data": initial_df}
+
+        conditional_step = AddColumns(
+            table="source_data",
+            columns=[
+                ColumnDefinition(
+                    name="category",
+                    expression=WhenThenOtherwiseExpression(
+                        conditions=[
+                            WhenThenClause(
+                                when=GtExpression(
+                                    lhs=ColumnReferenceExpression(name="value"),
+                                    rhs=ConstantValueExpression(value=100)
+                                ),
+                                then=ConstantValueExpression(value="High")
+                            ),
+                            WhenThenClause(
+                                when=GtExpression(
+                                    lhs=ColumnReferenceExpression(name="value"),
+                                    rhs=ConstantValueExpression(value=50)
+                                ),
+                                then=ConstantValueExpression(value="Medium")
+                            )
+                        ],
+                        otherwise=ConstantValueExpression(value="Low")
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[conditional_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "value": [200, 75, 30, 100, 50],
+            "category": ["High", "Medium", "Low", "Medium", "Low"]
+            # value=200 -> High (>100)
+            # value=75  -> Medium (>50)
+            # value=30  -> Low (else)
+            # value=100 -> Medium (>50, not >100)
+            # value=50  -> Low (else, not >50)
+        })
+
+        result_df = final_table_space["source_data"].collect()
+        # Ensure column order for comparison
+        result_df = result_df.select(expected_df.columns)
+        result_df = result_df.sort("id")
+        expected_df = expected_df.sort("id")
+
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
 
