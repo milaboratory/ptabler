@@ -1,17 +1,20 @@
+import typing
 import polars as pl
 
 from .base import Expression
 
+AnyExpression = Expression
 
-class RankExpression(Expression, tag='rank', rename="camel"):
+
+class RankExpression(Expression, tag='rank'):
     """
     Represents a rank function applied over a dataset partition.
     Calculates the rank of each row within its partition based on the specified ordering.
     Corresponds to the RankExpression in TypeScript definitions.
     Uses Polars' dense rank method by default.
     """
-    order_by: list[Expression]
-    partition_by: list[Expression]
+    order_by: list['AnyExpression']
+    partition_by: list['AnyExpression']
     descending: bool = False
 
     def to_polars(self) -> pl.Expr:
@@ -32,16 +35,16 @@ class RankExpression(Expression, tag='rank', rename="camel"):
             return rank_expr
 
 
-class CumsumExpression(Expression, tag='cumsum', rename="camel"):
+class CumsumExpression(Expression, tag='cumsum'):
     """
     Represents a cumulative sum function applied over a dataset partition, respecting order.
     Calculates the cumulative sum of the 'value' expression within each partition,
     based on the specified ordering (value first, then additional_order_by).
     Corresponds to the CumsumExpression in TypeScript definitions.
     """
-    value: Expression
-    additional_order_by: list[Expression]
-    partition_by: list[Expression]
+    value: 'AnyExpression'
+    additional_order_by: list['AnyExpression']
+    partition_by: list['AnyExpression']
     descending: bool = False
 
     def to_polars(self) -> pl.Expr:

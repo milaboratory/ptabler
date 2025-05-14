@@ -27,7 +27,7 @@ export interface ColumnSchema {
   /** Optional: The expected Polars data type for this column. */
   type?: PolarsDataType;
   /** Optional: A specific string to be interpreted as a null value for this column. */
-  null_value?: string;
+  nullValue?: string;
 }
 
 /** Represents the configuration for a step that reads data from a CSV file into the tablespace. */

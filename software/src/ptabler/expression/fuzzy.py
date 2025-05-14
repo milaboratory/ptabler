@@ -4,15 +4,16 @@ import polars_ds as pds
 
 from .base import Expression
 
-
 StringDistanceMetric = typing.Literal[
     "levenshtein",
     "optimal_string_alignment",
     "jaro_winkler"
 ]
 
+AnyExpression = Expression
 
-class StringDistanceExpression(Expression, tag='string_distance', rename="camel"):
+
+class StringDistanceExpression(Expression, tag='string_distance'):
     """
     Computes string distance or similarity between two string expressions.
     Corresponds to StringDistanceExpression in TypeScript.
@@ -20,9 +21,9 @@ class StringDistanceExpression(Expression, tag='string_distance', rename="camel"
     """
     metric: StringDistanceMetric
     """The specific distance metric to use (e.g., 'levenshtein')."""
-    string1: Expression
+    string1: 'AnyExpression'
     """The first string expression."""
-    string2: Expression
+    string2: 'AnyExpression'
     """The second string expression to compare against."""
     return_similarity: typing.Optional[bool] = False
     """
@@ -57,7 +58,7 @@ class StringDistanceExpression(Expression, tag='string_distance', rename="camel"
 FuzzyFilterDistanceMetric = typing.Literal['levenshtein', 'hamming']
 
 
-class FuzzyStringFilterExpression(Expression, tag='fuzzy_string_filter', rename="camel"):
+class FuzzyStringFilterExpression(Expression, tag='fuzzy_string_filter'):
     """
     Filters strings based on their distance to a pattern string.
     Returns true if the distance is within the specified bound.
@@ -66,9 +67,9 @@ class FuzzyStringFilterExpression(Expression, tag='fuzzy_string_filter', rename=
     """
     metric: FuzzyFilterDistanceMetric
     """The distance metric to use ('levenshtein' or 'hamming')."""
-    value: Expression
+    value: 'AnyExpression'
     """The string expression whose value will be compared."""
-    pattern: Expression
+    pattern: 'AnyExpression'
     """The expression representing the string pattern to compare against."""
     bound: int
     """The maximum allowed distance for a match (inclusive). Must be non-negative."""

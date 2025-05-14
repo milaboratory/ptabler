@@ -55,7 +55,7 @@ export interface ByClauseAggregationOperation {
    * The expression or list of expressions to order by to determine which value of `expression` is selected.
    * If an array of expressions is provided, ordering is done sequentially by each expression.
    */
-  by_expression: Expression | Expression[];
+  by: Expression[];
 }
 
 /**
@@ -67,11 +67,11 @@ export interface AggregateStep {
   /** Specifies the type of the step, which is 'aggregate'. */
   type: 'aggregate';
   /** The name of the input table from the tablespace on which to perform aggregation. */
-  input_table: string;
+  inputTable: string;
   /** The name to be assigned to the newly created aggregated table in the tablespace. */
-  output_table: string;
+  outputTable: string;
   /** An optional list of column names to group by before performing aggregations. */
-  group_by?: string[];
+  groupBy: string[];
   /** An array of aggregation operations to apply to the input table. */
   aggregations: (StandardAggregationOperation | ByClauseAggregationOperation)[];
 }

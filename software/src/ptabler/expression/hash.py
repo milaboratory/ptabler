@@ -1,9 +1,11 @@
 import typing
-import msgspec
 import polars as pl
-import polars_hash as plh
+import polars_hash
 
 from .base import Expression
+
+AnyExpression = Expression
+
 
 # Define type literals based on the TypeScript definitions
 HashType = typing.Literal[
@@ -24,7 +26,7 @@ _NON_CRYPTOGRAPHIC_HASH_TYPES: set[HashType] = {
 }
 
 
-class HashExpression(Expression, tag='hash', tag_field="type", rename="camel"):
+class HashExpression(Expression, tag='hash'):
     """
     Represents a hashing operation on an expression's value.
 
@@ -37,7 +39,7 @@ class HashExpression(Expression, tag='hash', tag_field="type", rename="camel"):
     encoding: HashEncoding
     """The desired string encoding for the output hash ('hex' or 'base64')."""
 
-    value: Expression
+    value: 'AnyExpression'
     """The expression whose resulting value will be hashed."""
 
     def to_polars(self) -> pl.Expr:

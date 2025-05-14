@@ -48,17 +48,17 @@ export interface FilterStep {
   /**
    * The name of the input table in the tablespace from which rows will be filtered.
    */
-  input_table: string;
+  inputTable: string;
 
   /**
    * The name for the resulting filtered table that will be added to the tablespace.
    * This new table will contain only the rows that satisfy the condition.
    */
-  output_table: string;
+  outputTable: string;
 
   /**
    * A boolean Expression object used as the filter condition.
-   * Rows for which this expression evaluates to true are kept in the output_table.
+   * Rows for which this expression evaluates to true are kept in the outputTable.
    * Rows for which it evaluates to false or null are excluded.
    */
   condition: Expression;

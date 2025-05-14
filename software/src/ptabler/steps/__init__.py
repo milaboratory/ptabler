@@ -1,10 +1,14 @@
 from .base import PStep, GlobalSettings, TableSpace
-from .io import ReadCsv, WriteCsv
+from .io import ReadCsv, WriteCsv, WriteJson
 from .add_columns import AddColumns
 from .filter import Filter
+from .join import Join
+from .aggregate import Aggregate
 
 from typing import Union
 
-type AnyPStep = Union[ReadCsv, WriteCsv, AddColumns, Filter]
+type AnyPStep = Union[ReadCsv, WriteCsv,
+                      WriteJson, AddColumns, Filter, Join, Aggregate]
 
-__all__ = ["PStep", "ReadCsv", "WriteCsv", "AddColumns", "Filter", "GlobalSettings", "TableSpace", "AnyPStep"]
+__all__ = ["PStep", "ReadCsv", "WriteCsv", "WriteJson", "AddColumns",
+           "Filter", "Join", "Aggregate", "GlobalSettings", "TableSpace", "AnyPStep"]

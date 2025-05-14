@@ -1,49 +1,35 @@
+import typing
 from .base import Expression
 
+from . import basics
+from . import string
+from . import fuzzy
+from . import conditional
+from . import window
+from . import hash
+
 from .basics import (
-    GtExpression,
-    GeExpression,
-    EqExpression,
-    LtExpression,
-    LeExpression,
-    NeqExpression,
-    PlusExpression,
-    MinusExpression,
-    MultiplyExpression,
-    TrueDivExpression,
-    FloorDivExpression,
-    Log10Expression,
-    LogExpression,
-    Log2Expression,
-    AbsExpression,
-    SqrtExpression,
-    UnaryMinusExpression,
+    GtExpression, GeExpression, EqExpression, LtExpression, LeExpression, NeqExpression, PlusExpression,
+    MinusExpression, MultiplyExpression, TrueDivExpression, FloorDivExpression, IsNaExpression, IsNotNaExpression,
+    Log10Expression, LogExpression, Log2Expression, AbsExpression, SqrtExpression, UnaryMinusExpression,
+    OrExpression, NotExpression, ColumnReferenceExpression, ConstantValueExpression, MinExpression, MaxExpression,
     AndExpression,
-    OrExpression,
-    NotExpression,
-    IsNaExpression,
-    IsNotNaExpression,
-    ColumnReferenceExpression,
-    ConstantValueExpression,
-    MinExpression,
-    MaxExpression,
 )
 from .string import (
-    StringJoinExpression,
-    ToUpperExpression,
-    ToLowerExpression,
-    StrLenExpression,
-    SubstringExpression,
+    StringJoinExpression, ToUpperExpression, ToLowerExpression, StrLenExpression, SubstringExpression,
 )
 from .fuzzy import (
-    StringDistanceExpression,
-    FuzzyStringFilterExpression,
+    StringDistanceExpression, FuzzyStringFilterExpression,
 )
-from .conditional import WhenThenOtherwiseExpression
-from .window import RankExpression, CumsumExpression
-from .hash import HashExpression
-
-import typing
+from .conditional import (
+    WhenThenOtherwiseExpression,
+)
+from .window import (
+    RankExpression, CumsumExpression,
+)
+from .hash import (
+    HashExpression,
+)
 
 # Define a Union type that includes all concrete expression types
 AnyExpression = typing.Union[
@@ -101,9 +87,18 @@ AnyExpression = typing.Union[
     FuzzyStringFilterExpression,
 ]
 
+basics.AnyExpression = AnyExpression
+string.AnyExpression = AnyExpression
+fuzzy.AnyExpression = AnyExpression
+conditional.AnyExpression = AnyExpression
+window.AnyExpression = AnyExpression
+hash.AnyExpression = AnyExpression
+
+
 __all__ = [
     "Expression",
-    "AnyExpression"
+    "AnyExpression",
+    "GtExpression",
     "GtExpression",
     "GeExpression",
     "EqExpression",

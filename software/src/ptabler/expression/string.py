@@ -3,13 +3,15 @@ import polars as pl
 
 from .base import Expression
 
+AnyExpression = Expression
 
-class StringJoinExpression(Expression, tag='str_join', rename="camel"):
+
+class StringJoinExpression(Expression, tag='str_join'):
     """
     Represents a string join operation on an array of expressions.
     Corresponds to the StringJoinExpression in TypeScript definitions.
     """
-    operands: list[Expression]
+    operands: list['AnyExpression']
     """An array of expressions whose string representations will be joined."""
     delimiter: typing.Optional[str] = None
     """An optional delimiter string to insert between joined elements."""
@@ -20,25 +22,27 @@ class StringJoinExpression(Expression, tag='str_join', rename="camel"):
         return pl.concat_str(polars_operands, separator=self.delimiter or "")
 
 
-class ToUpperExpression(Expression, tag='to_upper', rename="camel"):
+class ToUpperExpression(Expression, tag='to_upper'):
     """Converts a string expression to uppercase."""
-    value: Expression
+    value: 'AnyExpression'
     """The string expression to operate on."""
 
     def to_polars(self) -> pl.Expr:
         return self.value.to_polars().str.to_uppercase()
 
-class ToLowerExpression(Expression, tag='to_lower', rename="camel"):
+
+class ToLowerExpression(Expression, tag='to_lower'):
     """Converts a string expression to lowercase."""
-    value: Expression
+    value: 'AnyExpression'
     """The string expression to operate on."""
 
     def to_polars(self) -> pl.Expr:
         return self.value.to_polars().str.to_lowercase()
 
-class StrLenExpression(Expression, tag='str_len', rename="camel"):
+
+class StrLenExpression(Expression, tag='str_len'):
     """Calculates the character length of a string expression."""
-    value: Expression
+    value: 'AnyExpression'
     """The string expression to operate on."""
 
     def to_polars(self) -> pl.Expr:
@@ -47,7 +51,7 @@ class StrLenExpression(Expression, tag='str_len', rename="camel"):
         return self.value.to_polars().str.len_chars()
 
 
-class SubstringExpression(Expression, tag='substring', rename="camel"):
+class SubstringExpression(Expression, tag='substring'):
     """
     Represents a substring extraction operation on an expression.
     Corresponds to the SubstringExpression in TypeScript definitions.
@@ -60,7 +64,7 @@ class SubstringExpression(Expression, tag='substring', rename="camel"):
     If the requested substring range extends beyond the actual string length,
     the extraction automatically stops at the end of the string (Polars default behavior).
     """
-    value: Expression
+    value: 'AnyExpression'
     """The expression whose string value will be used."""
     start: int
     """The starting position (0-indexed)."""
@@ -72,16 +76,19 @@ class SubstringExpression(Expression, tag='substring', rename="camel"):
     def to_polars(self) -> pl.Expr:
         """Converts the expression to a Polars str.slice expression."""
         if self.length is not None and self.end is not None:
-            raise ValueError("SubstringExpression cannot have both 'length' and 'end' defined.")
+            raise ValueError(
+                "SubstringExpression cannot have both 'length' and 'end' defined.")
 
         slice_length: typing.Optional[int] = None
         if self.length is not None:
             if self.length < 0:
-                 raise ValueError("SubstringExpression 'length' cannot be negative.")
+                raise ValueError(
+                    "SubstringExpression 'length' cannot be negative.")
             slice_length = self.length
         elif self.end is not None:
             if self.end < self.start:
-                raise ValueError(f"SubstringExpression 'end' ({self.end}) cannot be less than 'start' ({self.start}).")
+                raise ValueError(
+                    f"SubstringExpression 'end' ({self.end}) cannot be less than 'start' ({self.start}).")
             slice_length = self.end - self.start
 
         polars_value = self.value.to_polars()

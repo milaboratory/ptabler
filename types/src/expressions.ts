@@ -154,9 +154,9 @@ export interface RankExpression {
   /** The type of operation, always 'rank'. */
   type: 'rank';
   /** List of expressions to partition the data by before ranking. The output of these expressions will be used for partitioning. */
-  partition_by: Expression[];
+  partitionBy: Expression[];
   /** Defines the ordering expressions within partitions to determine the rank. */
-  order_by: Expression[];
+  orderBy: Expression[];
   /** Whether to sort in descending order. Defaults to false (ascending). */
   descending?: boolean;
 }
@@ -173,9 +173,9 @@ export interface CumsumExpression {
   /** The expression whose values will be cumulatively summed. */
   value: Expression;
   /** Defines additional ordering within partitions for the cumulative sum calculation, in addition to the ordering of the values themselves. */
-  additional_order_by: Expression[];
+  additionalOrderBy: Expression[];
   /** List of expressions to partition the data by before calculating the cumulative sum. The output of these expressions will be used for partitioning. */
-  partition_by: Expression[];
+  partitionBy: Expression[];
   /** Whether to sort in descending order. Defaults to false (ascending). */
   descending?: boolean;
 }
@@ -215,7 +215,7 @@ export interface StringDistanceExpression {
    * If false or undefined, it returns the raw edit distance (e.g., Levenshtein, OSA).
    * Jaro-Winkler inherently returns a similarity score; this flag might be ignored or influence its normalization if applicable.
    */
-  return_similarity?: boolean;
+  returnSimilarity?: boolean;
 }
 
 /** Defines the supported fuzzy string filter distance metrics. */

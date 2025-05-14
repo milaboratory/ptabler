@@ -1,7 +1,10 @@
+import typing
 import msgspec
 import polars as pl
 
 from .base import Expression
+
+AnyExpression = Expression
 
 
 class WhenThenClause(msgspec.Struct, frozen=True, rename="camel"):
@@ -9,11 +12,11 @@ class WhenThenClause(msgspec.Struct, frozen=True, rename="camel"):
     Represents a single '''when''' condition and its corresponding '''then''' result expression.
     Used within the WhenThenOtherwiseExpression. Corresponds to the WhenThenClause in TS.
     """
-    when: Expression  # : The condition expression. Should evaluate to a boolean.
-    then: Expression  # : The result expression if the '''when''' condition is true.
+    when: 'AnyExpression'  # : The condition expression. Should evaluate to a boolean.
+    then: 'AnyExpression'  # : The result expression if the '''when''' condition is true.
 
 
-class WhenThenOtherwiseExpression(Expression, tag='when_then_otherwise', tag_field="type", rename="camel"):
+class WhenThenOtherwiseExpression(Expression, tag='when_then_otherwise'):
     """
     Represents a conditional expression evaluating a series of '''when''' conditions.
     Returns the corresponding '''then''' expression's value for the first true '''when'''.
@@ -22,7 +25,7 @@ class WhenThenOtherwiseExpression(Expression, tag='when_then_otherwise', tag_fie
     """
     conditions: list[WhenThenClause]  # : An array of "when/then" clauses evaluated in order.
     # : The expression whose value is returned if none of the "when" conditions are met.
-    otherwise: Expression
+    otherwise: 'AnyExpression'
 
     def to_polars(self) -> pl.Expr:
         """
