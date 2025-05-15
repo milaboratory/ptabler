@@ -1,0 +1,64 @@
+name: Build and Test NPM packages
+on:
+  merge_group:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch: {}
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: milaboratory/github-ci/actions/context/init@v4
+        with:
+          version-canonize: false
+          branch-versioning: main
+  run:
+    needs:
+      - init
+    uses: milaboratory/github-ci/.github/workflows/node-simple-pnpm.yaml@v4
+    with:
+      app-name: PTabler
+      app-name-slug: 'ptabler'
+      gha-runner-label: 'dev-pl-sdk'
+      notify-telegram: true
+      node-version: '20.x'
+      build-script-name: 'build'
+      test: false
+      test-script-name: 'test'
+      publish-to-public: 'true'
+      pnpm-recursive-build: false
+      pnpm-recursive-tests: false
+      npmrc-config: |
+        {
+          "registries": {
+            "https://registry.npmjs.org/": {
+              "scopes": ["milaboratories", "platforma-sdk"],
+              "tokenVar": "NPMJS_TOKEN"
+            },
+            "https://npm.pkg.github.com/": {
+              "scopes": ["milaboratory"],
+              "tokenVar": "NODE_AUTH_TOKEN"
+            }
+          }
+        }
+    secrets:
+      env: |
+        { "PL_LICENSE": ${{ toJSON(secrets.MI_LICENSE) }},
+          "MI_LICENSE": ${{ toJSON(secrets.MI_LICENSE) }},
+          "PL_CI_TEST_USER": ${{ toJSON(secrets.PL_CI_TEST_USER) }},
+          "PL_CI_TEST_PASSWORD": ${{ toJSON(secrets.PL_CI_TEST_PASSWORD) }},
+          "NPMJS_TOKEN": ${{ toJSON(secrets.NPMJS_TOKEN) }},
+          "AWS_CI_IAM_MONOREPO_SIMPLE_ROLE": ${{ toJSON(secrets.AWS_CI_IAM_MONOREPO_SIMPLE_ROLE) }},
+          "AWS_CI_TURBOREPO_S3_BUCKET": ${{ toJSON(secrets.AWS_CI_TURBOREPO_S3_BUCKET) }},
+          "PL_REGISTRY_PLATFORMA_OPEN_UPLOAD_URL": ${{ toJSON(secrets.PL_REGISTRY_PLOPEN_UPLOAD_URL) }} }
+
+      TELEGRAM_NOTIFICATION_TARGET: ${{ secrets.TG_CHANNEL_MIBUILDS }}
+      TELEGRAM_API_TOKEN: ${{ secrets.TG_CI_BOT_TOKEN }}
+
+      GH_ZEN_APP_ID: ${{ secrets.GH_ZEN_APP_ID }}
+      GH_ZEN_APP_PRIVATE_KEY: ${{ secrets.GH_ZEN_APP_PRIVATE_KEY }}

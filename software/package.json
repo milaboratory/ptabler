@@ -1,8 +1,8 @@
 {
-  "name": "@milaboratories/software-ptabler",
+  "name": "@platforma-open/software-ptabler",
   "version": "1.0.0",
   "scripts": {
-    "init": "[ -d ../.venv ] || (cd src && python -m venv ../../.venv && ../../.venv/bin/pip install -r requirements.txt)",
+    "init-python": "[ -d ../.venv ] || (cd src && python -m venv ../../.venv && ../../.venv/bin/pip install -r requirements.txt)",
     "build": "pl-pkg build",
     "prepublishOnly": "pl-pkg publish packages",
     "test": "[ ! -d ../.venv ] || (../.venv/bin/python -m unittest discover --verbose -s src -p '*.py')",

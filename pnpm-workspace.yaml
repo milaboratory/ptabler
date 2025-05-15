@@ -8,7 +8,7 @@ catalog:
   '@platforma-sdk/block-tools': ^2.5.47
   '@platforma-sdk/eslint-config': ^1.0.3
 
-  '@platforma-open/milaboratories.runenv-python-3': ^1.1.13
+  '@platforma-open/milaboratories.runenv-python-3': ^1.1.14
 
   'typescript': ~5.5.4
   'turbo': ^2.5.3
@@ -16,6 +16,6 @@ catalog:
   'vite': ^6.3.5
   'rollup-plugin-sourcemaps2': ^0.5.1
   'eslint': ^9.26.0
-  'vite-plugin-dts': ^2.1.0
+  'vite-plugin-dts': ^4.5.4
 
-  '@changesets/cli': ^2.29.3
+  '@changesets/cli': ^2.29.4
