@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/software-ptabler.types",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Type definitions for PTabler",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
@@ -22,8 +22,7 @@
     "./dist/**/*",
     "./src/**/*"
   ],
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@platforma-sdk/eslint-config": "catalog:",
     "vite-plugin-dts": "catalog:",
