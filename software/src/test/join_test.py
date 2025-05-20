@@ -100,7 +100,7 @@ class JoinStepTests(unittest.TestCase):
             left_table="left_table",
             right_table="right_table",
             output_table="joined_output",
-            how="outer",
+            how="full",
             left_on=["id"],
             right_on=["id"],
             left_columns={"id": "id", "name": "name", "value_left": "value_left"},

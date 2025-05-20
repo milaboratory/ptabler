@@ -13,7 +13,7 @@ class Join(PStep, tag="join"):
     left_table: str
     right_table: str
     output_table: str
-    how: Literal["inner", "left", "right", "outer", "cross"]
+    how: Literal["inner", "left", "right", "full", "cross"]
     # Optional, as not needed for cross join
     left_on: Optional[list[str]] = None
     # Optional, as not needed for cross join

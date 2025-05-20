@@ -8,11 +8,12 @@ from ptabler.steps.add_columns import ColumnDefinition
 from ptabler.expression import (
     ColumnReferenceExpression, ConstantValueExpression,
     PlusExpression, EqExpression, GtExpression, AndExpression,
-    ToUpperExpression, StringJoinExpression
+    ToUpperExpression, StringJoinExpression, SubstringExpression,
+    CumsumExpression, RankExpression,
+    StringDistanceExpression, FuzzyStringFilterExpression,
+    WhenThenClause, WhenThenOtherwiseExpression,
+    HashExpression,
 )
-from ptabler.expression.window import CumsumExpression, RankExpression
-from ptabler.expression.fuzzy import StringDistanceExpression, FuzzyStringFilterExpression
-from ptabler.expression.conditional import WhenThenClause, WhenThenOtherwiseExpression
 
 # Minimal global_settings for tests not relying on file I/O from a specific root_folder
 global_settings = GlobalSettings(root_folder=".")
@@ -320,6 +321,51 @@ class StepTests(unittest.TestCase):
         result_df = result_df.select(expected_df.columns)
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
+    def test_hash_expression(self):
+        """
+        Tests AddColumns with StringDistanceExpression for Levenshtein.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "s1": ["apple", "banana", "orange"],
+            "s2": ["apply", "bandana", "apricot"]
+        }).lazy()
+        initial_table_space: TableSpace = {"strings_table": initial_df}
+
+        add_dist_step = AddColumns(
+            table="strings_table",
+            columns=[
+                ColumnDefinition(
+                    name="s1s2_hash",
+                    expression=SubstringExpression(
+                        ToUpperExpression(HashExpression("sha256", "base64", StringJoinExpression([
+                            ColumnReferenceExpression("s1"),
+                            ColumnReferenceExpression("s2")
+                        ], "_"))),
+                        start=0, length=10
+                    ),
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[add_dist_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "s1": ["apple", "banana", "orange"],
+            "s2": ["apply", "bandana", "apricot"],
+            "s1s2_hash": ["2T0A+DADLH", "YKSEMRPXPM", "ORAT8YELPR"]
+        })
+
+        result_df = final_table_space["strings_table"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
     def test_fuzzy_string_filter_expression(self):
         """
         Tests Filter step with a FuzzyStringFilterExpression using Levenshtein distance.
@@ -388,14 +434,16 @@ class StepTests(unittest.TestCase):
                         conditions=[
                             WhenThenClause(
                                 when=GtExpression(
-                                    lhs=ColumnReferenceExpression(name="value"),
+                                    lhs=ColumnReferenceExpression(
+                                        name="value"),
                                     rhs=ConstantValueExpression(value=100)
                                 ),
                                 then=ConstantValueExpression(value="High")
                             ),
                             WhenThenClause(
                                 when=GtExpression(
-                                    lhs=ColumnReferenceExpression(name="value"),
+                                    lhs=ColumnReferenceExpression(
+                                        name="value"),
                                     rhs=ConstantValueExpression(value=50)
                                 ),
                                 then=ConstantValueExpression(value="Medium")

@@ -59,7 +59,7 @@ export interface CrossJoinStep {
 }
 
 /** Defines the possible join strategies for a standard join operation (excluding cross join). */
-export type JoinStrategy = 'inner' | 'left' | 'right' | 'outer';
+export type JoinStrategy = 'inner' | 'left' | 'right' | 'full';
 
 /** Defines any possible join step. */
 export type AnyJoinStep = JoinStep | CrossJoinStep;

@@ -22,7 +22,7 @@ from .fuzzy import (
     StringDistanceExpression, FuzzyStringFilterExpression,
 )
 from .conditional import (
-    WhenThenOtherwiseExpression,
+    WhenThenClause, WhenThenOtherwiseExpression,
 )
 from .window import (
     RankExpression, CumsumExpression,
@@ -132,6 +132,7 @@ __all__ = [
     "SubstringExpression",
     "StringDistanceExpression",
     "FuzzyStringFilterExpression",
+    "WhenThenClause",
     "WhenThenOtherwiseExpression",
     "RankExpression",
     "CumsumExpression",
