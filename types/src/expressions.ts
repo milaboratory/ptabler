@@ -16,6 +16,7 @@ export type Expression =
   | FuzzyStringFilterExpression
   | WhenThenOtherwiseExpression
   | SubstringExpression
+  | StringReplaceExpression
   | MinMaxExpression;
 
 /** Represents all possible expression types in the system. */
@@ -289,6 +290,34 @@ export interface SubstringExpression {
   length?: number;
   /** The end position of the substring (exclusive). Mutually exclusive with 'length'. */
   end?: number;
+}
+
+/**
+ * Represents a string replacement operation.
+ * Replaces occurrences of a pattern (regex or literal) in a string expression with a replacement string.
+ * The behavior is aligned with Polars' `replace` and `replace_all` functions.
+ *
+ * - If `literal` is true, the `pattern` is treated as a literal string. Otherwise, it's treated as a regular expression.
+ * - If `replaceAll` is true, all occurrences of the pattern are replaced. Otherwise, only the first occurrence is replaced.
+ *
+ * When using regular expressions (i.e., `literal` is false or undefined):
+ * - Positional capture groups can be referenced in the `replacement` string using `$n` or `${n}` (e.g., `$1` for the first group).
+ * - Named capture groups can be referenced using `${name}`.
+ * - To include a literal dollar sign (`$`) in the replacement, it must be escaped as `$$`.
+ */
+export interface StringReplaceExpression {
+  /** The type of operation, always 'str_replace'. */
+  type: 'str_replace';
+  /** The input string expression to operate on. */
+  value: Expression;
+  /** The pattern (regex or literal string) to search for. Can be a string literal or an expression evaluating to a string. */
+  pattern: Expression | string;
+  /** The replacement string. Can be a string literal or an expression evaluating to a string. Can use $n or ${name} for captured groups if pattern is a regex. */
+  replacement: Expression | string;
+  /** If true, replace all occurrences of the pattern. If false or undefined, replace only the first. Defaults to false. */
+  replaceAll?: boolean;
+  /** If true, treat the pattern as a literal string. If false or undefined, treat it as a regex. Defaults to false. */
+  literal?: boolean;
 }
 
 /** Defines the supported min/max operators. */

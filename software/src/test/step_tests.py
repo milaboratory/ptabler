@@ -13,6 +13,7 @@ from ptabler.expression import (
     StringDistanceExpression, FuzzyStringFilterExpression,
     WhenThenClause, WhenThenOtherwiseExpression,
     HashExpression,
+    StringReplaceExpression,
 )
 
 # Minimal global_settings for tests not relying on file I/O from a specific root_folder
@@ -471,6 +472,53 @@ class StepTests(unittest.TestCase):
             # value=30  -> Low (else)
             # value=100 -> Medium (>50, not >100)
             # value=50  -> Low (else, not >50)
+        })
+
+        result_df = final_table_space["source_data"].collect()
+        # Ensure column order for comparison
+        result_df = result_df.select(expected_df.columns)
+        result_df = result_df.sort("id")
+        expected_df = expected_df.sort("id")
+
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_add_columns_with_string_replace_expression(self):
+        """
+        Tests AddColumns step with a StringReplaceExpression.
+        Replaces 'name: <name>, age: <age>' with 'Person: <name>, Years: <age>'.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "text_col": ["name: John Doe, age: 30", "name: Jane Smith, age: 25", "name: Bob Johnson, age: 40"]
+        }).lazy()
+        initial_table_space: TableSpace = {"source_data": initial_df}
+
+        replace_step = AddColumns(
+            table="source_data",
+            columns=[
+                ColumnDefinition(
+                    name="replace_capture_groups",
+                    expression=StringReplaceExpression(
+                        value=ColumnReferenceExpression(name="text_col"),
+                        pattern=r"name: (\w+\s\w+), age: (\d+)",
+                        replacement="Person: $1, Years: $2"
+                        # replace_all=False (default), literal=False (default)
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[replace_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "text_col": ["name: John Doe, age: 30", "name: Jane Smith, age: 25", "name: Bob Johnson, age: 40"],
+            "replace_capture_groups": ["Person: John Doe, Years: 30", "Person: Jane Smith, Years: 25", "Person: Bob Johnson, Years: 40"]
         })
 
         result_df = final_table_space["source_data"].collect()
