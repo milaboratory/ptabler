@@ -7,3 +7,4 @@
 - Add StringReplaceExpression for string replacement operations; update related interfaces and tests. Introduce functionality to replace patterns in strings with specified replacements, including support for regex and capture groups.
 - Add Sort step implementation with tests for sorting functionality, including handling of null values and stability.
 - Introduce migration guide from ptransform to ptabler, detailing key differences and step mappings.
+- Add FillNaExpression for handling null values

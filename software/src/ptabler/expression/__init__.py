@@ -23,7 +23,7 @@ from .fuzzy import (
     StringDistanceExpression, FuzzyStringFilterExpression,
 )
 from .conditional import (
-    WhenThenClause, WhenThenOtherwiseExpression,
+    WhenThenClause, WhenThenOtherwiseExpression, FillNaExpression
 )
 from .window import (
     RankExpression, CumsumExpression,
@@ -79,6 +79,7 @@ AnyExpression = typing.Union[
     FuzzyStringFilterExpression,
     # Conditional Logic
     WhenThenOtherwiseExpression,
+    FillNaExpression,
     # Window Functions
     RankExpression,
     CumsumExpression,
@@ -137,6 +138,7 @@ __all__ = [
     "FuzzyStringFilterExpression",
     "WhenThenClause",
     "WhenThenOtherwiseExpression",
+    "FillNaExpression",
     "RankExpression",
     "CumsumExpression",
     "HashExpression",

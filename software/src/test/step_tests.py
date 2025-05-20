@@ -14,6 +14,7 @@ from ptabler.expression import (
     WhenThenClause, WhenThenOtherwiseExpression,
     HashExpression,
     StringReplaceExpression,
+    FillNaExpression,
 )
 
 # Minimal global_settings for tests not relying on file I/O from a specific root_folder
@@ -519,6 +520,68 @@ class StepTests(unittest.TestCase):
             "id": [1, 2, 3],
             "text_col": ["name: John Doe, age: 30", "name: Jane Smith, age: 25", "name: Bob Johnson, age: 40"],
             "replace_capture_groups": ["Person: John Doe, Years: 30", "Person: Jane Smith, Years: 25", "Person: Bob Johnson, Years: 40"]
+        })
+
+        result_df = final_table_space["source_data"].collect()
+        # Ensure column order for comparison
+        result_df = result_df.select(expected_df.columns)
+        result_df = result_df.sort("id")
+        expected_df = expected_df.sort("id")
+
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_add_columns_with_fillna_expression(self):
+        """
+        Tests AddColumns step with a FillNaExpression.
+        Fills null values in 'col_with_nulls' with values from 'fallback_col'.
+        Also tests filling with a constant value.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "col_with_nulls": [10, None, 30, None],
+            "fallback_col": [100, 200, 300, 400],
+            "another_col": [1, 2, 3, 4]
+        }).lazy()
+        initial_table_space: TableSpace = {"source_data": initial_df}
+
+        fillna_step = AddColumns(
+            table="source_data",
+            columns=[
+                ColumnDefinition(
+                    name="filled_with_col",
+                    expression=FillNaExpression(
+                        input=ColumnReferenceExpression(name="col_with_nulls"),
+                        fill_value=ColumnReferenceExpression(name="fallback_col")
+                    )
+                ),
+                ColumnDefinition(
+                    name="filled_with_const",
+                    expression=FillNaExpression(
+                        input=ColumnReferenceExpression(name="col_with_nulls"),
+                        fill_value=ConstantValueExpression(value=-1)
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[fillna_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "col_with_nulls": [10, None, 30, None],
+            "fallback_col": [100, 200, 300, 400],
+            "another_col": [1, 2, 3, 4],
+            "filled_with_col": [10, 200, 30, 400],
+            "filled_with_const": [10, -1, 30, -1]
+        }, schema_overrides={
+            "col_with_nulls": pl.Int64,
+            "filled_with_col": pl.Int64,
+            "filled_with_const": pl.Int64
         })
 
         result_df = final_table_space["source_data"].collect()

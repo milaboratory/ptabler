@@ -17,7 +17,8 @@ export type Expression =
   | WhenThenOtherwiseExpression
   | SubstringExpression
   | StringReplaceExpression
-  | MinMaxExpression;
+  | MinMaxExpression
+  | FillNaExpression;
 
 /** Represents all possible expression types in the system. */
 export type ComparisonOperator = 'gt' | 'ge' | 'eq' | 'lt' | 'le' | 'neq';
@@ -329,4 +330,20 @@ export interface MinMaxExpression {
   type: MinMaxOperator;
   /** An array of expressions to find the minimum or maximum value from. */
   operands: Expression[];
+}
+
+/**
+ * Represents a fill NA (null) operation.
+ * If the 'input' expression evaluates to null, the 'fillValue' expression is used.
+ * Otherwise, the 'input' expression's value is used.
+ * This is a convenience shortcut for a common pattern often implemented with
+ * conditional expressions (e.g., when(is_na(input), fillValue).otherwise(input)).
+ */
+export interface FillNaExpression {
+  /** The type of operation, always 'fill_na'. */
+  type: 'fill_na';
+  /** The primary expression to evaluate. */
+  input: Expression;
+  /** The expression whose value is used if 'input' is null. */
+  fillValue: Expression;
 }
