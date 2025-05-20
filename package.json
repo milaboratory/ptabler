@@ -4,7 +4,7 @@
     "build:dev": "PL_PKG_DEV=local turbo run build",
     "test": "PL_PKG_DEV=local turbo run test --concurrency 1",
     "test:dry-run": "PL_PKG_DEV=local turbo run test --dry-run=json",
-    "do-pack": "turbo run do-pack",
+    "do-pack": "PL_PKG_DEV=local turbo run do-pack",
     "changeset": "changeset",
     "version-packages": "changeset version"
   },

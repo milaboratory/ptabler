@@ -10,6 +10,7 @@
     },
     "do-pack": {
       "dependsOn": ["build"],
+      "env": ["PL_PKG_DEV"],
       "outputs": ["package.tgz"]
     },
     "test": {

@@ -5,11 +5,12 @@ from .filter import Filter
 from .join import Join
 from .aggregate import Aggregate
 from .concatenate import Concatenate
+from .sort import Sort
 
 from typing import Union
 
 type AnyPStep = Union[ReadCsv, WriteCsv,
-                      WriteJson, AddColumns, Filter, Join, Aggregate, Concatenate]
+                      WriteJson, AddColumns, Filter, Join, Aggregate, Concatenate, Sort]
 
 __all__ = ["PStep", "ReadCsv", "WriteCsv", "WriteJson", "AddColumns",
-           "Filter", "Join", "Aggregate", "Concatenate", "GlobalSettings", "TableSpace", "AnyPStep"]
+           "Filter", "Join", "Aggregate", "Concatenate", "Sort", "GlobalSettings", "TableSpace", "AnyPStep"]
