@@ -1,6 +1,7 @@
 import unittest
 import polars as pl
 from polars.testing import assert_frame_equal
+import math # Added for math.ceil in expected value generation logic
 
 from ptabler.workflow import PWorkflow
 from ptabler.steps import GlobalSettings, AddColumns, Filter, TableSpace
@@ -367,6 +368,122 @@ class StepTests(unittest.TestCase):
         result_df = final_table_space["strings_table"].collect()
         result_df = result_df.select(expected_df.columns)
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_hash_expression_advanced(self):
+        """
+        Tests AddColumns with HashExpression focusing on the 'bits' parameter
+        and new base64_alphanumeric/base64_alphanumeric_upper encodings.
+        Assertions are changed to check for correct string lengths only for hash columns.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2],
+            "text": ["hello_world", "another_test"],
+        }).lazy()
+        initial_table_space: TableSpace = {"source_table": initial_df}
+
+        # Definitions for hash columns remain the same
+        add_hash_cols_step = AddColumns(
+            table="source_table",
+            columns=[
+                ColumnDefinition(
+                    name="sha256_hex_16b",
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='hex',
+                        value=ColumnReferenceExpression(name="text"), bits=16)
+                ),
+                ColumnDefinition(
+                    name="sha256_b64_24b",
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='base64',
+                        value=ColumnReferenceExpression(name="text"), bits=24)
+                ),
+                ColumnDefinition(
+                    name="sha256_b64_alnum_30b",
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='base64_alphanumeric',
+                        value=ColumnReferenceExpression(name="text"), bits=30)
+                ),
+                ColumnDefinition(
+                    name="sha256_b64_alnum_upper_30b",
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='base64_alphanumeric_upper',
+                        value=ColumnReferenceExpression(name="text"), bits=30)
+                ),
+                ColumnDefinition(
+                    name="sha256_b64_alnum_full", # No bits, full length after filter
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='base64_alphanumeric',
+                        value=ColumnReferenceExpression(name="text"))
+                ),
+                ColumnDefinition(
+                    name="wyhash_hex_20b", # wyhash produces 64 bits
+                    expression=HashExpression(
+                        hash_type='wyhash', encoding='hex',
+                        value=ColumnReferenceExpression(name="text"), bits=20)
+                ),
+                ColumnDefinition(
+                    name="wyhash_b64_alnum_upper_40b",
+                    expression=HashExpression(
+                        hash_type='wyhash', encoding='base64_alphanumeric_upper',
+                        value=ColumnReferenceExpression(name="text"), bits=40)
+                ),
+                ColumnDefinition(
+                    name="sha256_hex_bits_gt_max", # bits > 256, should use full hash (256 bits for sha256)
+                    expression=HashExpression(
+                        hash_type='sha256', encoding='hex',
+                        value=ColumnReferenceExpression(name="text"), bits=300)
+                ),
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[add_hash_cols_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        result_df = final_table_space["source_table"].collect()
+
+        # 1. Check base columns for exact values
+        expected_base_df = pl.DataFrame({
+            "id": [1, 2],
+            "text": ["hello_world", "another_test"],
+        })
+        assert_frame_equal(result_df.select(["id", "text"]), expected_base_df, check_dtypes=True)
+
+        # 2. Define expected lengths for hash columns
+        # For clarity, _HASH_OUTPUT_BITS from hash.py relevant values:
+        # 'sha256': 256, 'wyhash': 64
+        expected_lengths = {
+            "sha256_hex_16b": math.ceil(16 / 4),
+            "sha256_b64_24b": math.ceil(24 / 6),
+            "sha256_b64_alnum_30b": math.ceil(30 / 5.95), # Truncation based on original 6 bits/char of Base64
+            "sha256_b64_alnum_upper_30b": math.ceil(30 / 5.15), # Same as above
+            # For sha256_b64_alnum_full (bits=None): uses full 256 bits.
+            # SHA256 (32 bytes) -> Base64 (44 chars with padding) -> filter non-alnum.
+            # Common length is 43 (e.g. if one padding char and no internal +/-).
+            "sha256_b64_alnum_full": 42,
+            "wyhash_hex_20b": math.ceil(20 / 4),
+            "wyhash_b64_alnum_upper_40b": math.ceil(40 / 5.15),
+            "sha256_hex_bits_gt_max": math.ceil(256 / 4), # bits=300 capped to 256 for sha256
+        }
+
+        # 3. Assert lengths for hash columns
+        for col_name, expected_len in expected_lengths.items():
+            self.assertTrue(col_name in result_df.columns, f"Column {col_name} missing from results.")
+            actual_lengths = result_df[col_name].str.len_chars()
+            self.assertTrue(
+                actual_lengths.eq(expected_len).all(),
+                msg=(f"Length mismatch for column '{col_name}'. "
+                     f"Expected all to have length {expected_len}, "
+                     f"got lengths: {actual_lengths.to_list()}.")
+            )
+
+        # 4. Check all expected columns are present
+        expected_col_names = sorted(expected_base_df.columns + list(expected_lengths.keys()))
+        self.assertListEqual(sorted(result_df.columns), expected_col_names,
+                             msg="Final column list does not match expected.")
 
     def test_fuzzy_string_filter_expression(self):
         """

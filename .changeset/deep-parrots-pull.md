@@ -8,3 +8,4 @@
 - Add Sort step implementation with tests for sorting functionality, including handling of null values and stability.
 - Introduce migration guide from ptransform to ptabler, detailing key differences and step mappings.
 - Add FillNaExpression for handling null values
+- Enhance HashExpression to support additional encodings and optional bit truncation. Introduce 'base64_alphanumeric' and 'base64_alphanumeric_upper' encodings, and implement a 'bits' parameter for controlling output length based on entropy. Update related tests to validate new functionality and ensure correct behavior across various hash types and encodings.
