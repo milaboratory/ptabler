@@ -26,7 +26,6 @@ class Sort(PStep, tag="sort"):
     input_table: str
     output_table: str
     by: List[SortDirective]
-    stable: Optional[bool] = None # Defaults to False (not stable)
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -78,7 +77,7 @@ class Sort(PStep, tag="sort"):
             by=sort_by_columns,
             descending=descending_flags,
             nulls_last=nulls_last_flags,
-            maintain_order=self.stable if self.stable is not None else False
+            maintain_order=True
         )
 
         updated_table_space = table_space.copy()

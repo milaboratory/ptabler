@@ -52,12 +52,14 @@ class Join(PStep, tag="join"):
 
         if self.left_columns:
             left_lf = left_lf.select(
-                [pl.col(original_name).alias(new_name) for original_name, new_name in self.left_columns.items()]
+                [pl.col(original_name).alias(new_name)
+                 for original_name, new_name in self.left_columns.items()]
             )
 
         if self.right_columns:
             right_lf = right_lf.select(
-                [pl.col(original_name).alias(new_name) for original_name, new_name in self.right_columns.items()]
+                [pl.col(original_name).alias(new_name)
+                 for original_name, new_name in self.right_columns.items()]
             )
 
         joined_lf: pl.LazyFrame
@@ -74,7 +76,8 @@ class Join(PStep, tag="join"):
                 right_lf,
                 left_on=self.left_on,
                 right_on=self.right_on,
-                how=self.how
+                how=self.how,
+                maintain_order="left_right"
             )
 
         updated_table_space = table_space.copy()

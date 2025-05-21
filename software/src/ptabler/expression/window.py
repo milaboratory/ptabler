@@ -59,7 +59,8 @@ class CumsumExpression(Expression, tag='cumsum'):
         descending_flags = [self.descending] * len(combined_order_exprs)
 
         sorted_value_expr = polars_value.sort_by(
-            combined_order_exprs, descending=descending_flags)
+            combined_order_exprs, descending=descending_flags,
+            maintain_order=True)
 
         cumsum_after_sort_expr = sorted_value_expr.cum_sum()
 

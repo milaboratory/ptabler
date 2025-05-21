@@ -155,8 +155,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_stability",
             output_table="sorted_output",
-            by=[SortDirective(column="key", descending=False)],
-            stable=True
+            by=[SortDirective(column="key", descending=False)]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_stability)
         
