@@ -1,4 +1,4 @@
-import type { Expression } from './expressions';
+import type { Expression, AggregationType } from './expressions';
 
 /**
  * Defines standard aggregation functions that operate on a single expression.
@@ -30,7 +30,7 @@ export interface StandardAggregationOperation {
   /** The name for the resulting column after aggregation. */
   name: string;
   /** The type of standard aggregation to perform. */
-  aggregation: StandardAggregationType;
+  aggregation: AggregationType;
   /**
    * The primary expression to aggregate.
    * For aggregations like 'sum', 'mean', 'min', 'max', this is the expression (e.g., a column) whose values are aggregated.

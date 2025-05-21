@@ -5,6 +5,20 @@ from .base import Expression
 
 AnyExpression = Expression
 
+AggregationType = typing.Literal[
+    'sum',
+    'mean',
+    'median',
+    'min',
+    'max',
+    'std',
+    'var',
+    'count',
+    'first',
+    'last',
+    'n_unique'
+]
+
 
 class RankExpression(Expression, tag='rank'):
     """
@@ -68,3 +82,50 @@ class CumsumExpression(Expression, tag='cumsum'):
             return cumsum_after_sort_expr.over(polars_partitions)
         else:
             return cumsum_after_sort_expr
+
+
+class WindowExpression(Expression, tag='aggregate'):
+    """
+    Represents a generic window function call (e.g., sum, mean over a partition).
+    Corresponds to the WindowExpression in TypeScript definitions.
+    """
+    operation: AggregationType
+    value: 'AnyExpression'
+    partition_by: list['AnyExpression']
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars window expression."""
+        polars_value = self.value.to_polars()
+        polars_partitions = [p.to_polars() for p in self.partition_by]
+
+        agg_expr: pl.Expr
+        match self.operation:
+            case 'sum':
+                agg_expr = polars_value.sum()
+            case 'mean':
+                agg_expr = polars_value.mean()
+            case 'median':
+                agg_expr = polars_value.median()
+            case 'min':
+                agg_expr = polars_value.min()
+            case 'max':
+                agg_expr = polars_value.max()
+            case 'std':
+                agg_expr = polars_value.std()
+            case 'var':
+                agg_expr = polars_value.var()
+            case 'count':
+                agg_expr = polars_value.count()
+            case 'first':
+                agg_expr = polars_value.first()
+            case 'last':
+                agg_expr = polars_value.last()
+            case 'n_unique':
+                agg_expr = polars_value.n_unique()
+            case _:
+                raise ValueError(f"Unsupported window operation: {self.operation}")
+
+        if polars_partitions:
+            return agg_expr.over(polars_partitions)
+        else:
+            return agg_expr

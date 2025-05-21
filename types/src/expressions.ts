@@ -18,7 +18,8 @@ export type Expression =
   | SubstringExpression
   | StringReplaceExpression
   | MinMaxExpression
-  | FillNaExpression;
+  | FillNaExpression
+  | WindowExpression;
 
 /** Represents all possible expression types in the system. */
 export type ComparisonOperator = 'gt' | 'ge' | 'eq' | 'lt' | 'le' | 'neq';
@@ -358,4 +359,35 @@ export interface FillNaExpression {
   input: Expression;
   /** The expression whose value is used if 'input' is null. */
   fillValue: Expression;
+}
+
+/**
+ * Defines standard aggregation functions that can be used in window expressions.
+ */
+export type AggregationType =
+  | 'sum'
+  | 'mean'
+  | 'median'
+  | 'min'
+  | 'max'
+  | 'std'
+  | 'var'
+  | 'count'
+  | 'first'
+  | 'last'
+  | 'n_unique';
+
+/**
+ * Represents a window function call.
+ * This allows applying an aggregation function over a specific partition of the data.
+ */
+export interface WindowExpression {
+  /** The type of operation, always 'aggregate'. Note: This might be confusing, consider 'window_aggregate' or similar if 'aggregate' is heavily used elsewhere for a different step type. */
+  type: 'aggregate';
+  /** The aggregation function to apply (e.g., 'sum', 'mean'). */
+  operation: AggregationType;
+  /** The expression to apply the aggregation function to. */
+  value: Expression;
+  /** List of expressions to partition the data by. The aggregation is performed independently within each partition. */
+  partitionBy: Expression[];
 }

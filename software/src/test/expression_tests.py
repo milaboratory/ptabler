@@ -10,7 +10,7 @@ from ptabler.expression import (
     ColumnReferenceExpression, ConstantValueExpression,
     PlusExpression, EqExpression, GtExpression, AndExpression,
     ToUpperExpression, StringJoinExpression, SubstringExpression,
-    CumsumExpression, RankExpression,
+    CumsumExpression, RankExpression, WindowExpression,
     StringDistanceExpression, FuzzyStringFilterExpression,
     WhenThenClause, WhenThenOtherwiseExpression,
     HashExpression,
@@ -707,6 +707,100 @@ class StepTests(unittest.TestCase):
         result_df = result_df.sort("id")
         expected_df = expected_df.sort("id")
 
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_window_expression_aggregations(self):
+        """
+        Tests AddColumns step with WindowExpression for various aggregations.
+        - sum('value') over ('category')
+        - mean('value') over ('category')
+        - count('id') over ()
+        - min('value') over ('category')
+        - first('value') over ('category') - input sorted for predictable first
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5, 6],
+            "category": ["A", "A", "B", "A", "B", "B"],
+            "value": [10, 20, 100, 30, 200, 300],
+            "order_for_first": [1,2,1,3,2,3] # To make first() predictable within category
+        }).lazy().sort(["category", "order_for_first"]) # Sort for predictable first()
+
+        initial_table_space: TableSpace = {"data_table": initial_df}
+
+        window_agg_step = AddColumns(
+            table="data_table",
+            columns=[
+                ColumnDefinition(
+                    name="sum_val_by_cat",
+                    expression=WindowExpression(
+                        operation='sum',
+                        value=ColumnReferenceExpression(name="value"),
+                        partition_by=[ColumnReferenceExpression(name="category")]
+                    )
+                ),
+                ColumnDefinition(
+                    name="mean_val_by_cat",
+                    expression=WindowExpression(
+                        operation='mean',
+                        value=ColumnReferenceExpression(name="value"),
+                        partition_by=[ColumnReferenceExpression(name="category")]
+                    )
+                ),
+                ColumnDefinition(
+                    name="total_count", # Count all IDs over the whole frame
+                    expression=WindowExpression(
+                        operation='count',
+                        value=ColumnReferenceExpression(name="id"),
+                        partition_by=[] # Empty partition_by for whole frame window
+                    )
+                ),
+                 ColumnDefinition(
+                    name="min_val_by_cat",
+                    expression=WindowExpression(
+                        operation='min',
+                        value=ColumnReferenceExpression(name="value"),
+                        partition_by=[ColumnReferenceExpression(name="category")]
+                    )
+                ),
+                ColumnDefinition(
+                    name="first_val_by_cat",
+                    expression=WindowExpression(
+                        operation='first',
+                        value=ColumnReferenceExpression(name="value"),
+                        partition_by=[ColumnReferenceExpression(name="category")]
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[window_agg_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        # Expected results are calculated based on the sorted initial_df
+        # Category A: ids [1,2,4], values [10,20,30] -> sum=60, mean=20, min=10, first=10
+        # Category B: ids [3,5,6], values [100,200,300] -> sum=600, mean=200, min=100, first=100
+        # Total count: 6
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 4, 3, 5, 6], # Based on initial sort
+            "category": ["A", "A", "A", "B", "B", "B"],
+            "value": [10, 20, 30, 100, 200, 300],
+            "order_for_first": [1,2,3,1,2,3],
+            "sum_val_by_cat": [60, 60, 60, 600, 600, 600],
+            "mean_val_by_cat": [20.0, 20.0, 20.0, 200.0, 200.0, 200.0],
+            "total_count": [6, 6, 6, 6, 6, 6],
+            "min_val_by_cat": [10, 10, 10, 100, 100, 100],
+            "first_val_by_cat": [10, 10, 10, 100, 100, 100],
+        }, schema_overrides={"total_count": pl.UInt32, "min_val_by_cat": pl.Int64, "first_val_by_cat": pl.Int64})
+
+        result_df = final_table_space["data_table"].collect()
+        # Sort result by the same keys as expected_df if not already guaranteed by processing
+        result_df = result_df.sort(["category", "order_for_first"]) 
+        
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
 
