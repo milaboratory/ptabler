@@ -23,6 +23,11 @@ POLARS_TYPE_STRING_TO_POLARS_TYPE: Mapping[str, pl.DataType] = {
     "Date": pl.Date,
     "Datetime": pl.Datetime, # Default time_unit is 'us' if parsed from string
     "Time": pl.Time,
+    # Aliases
+    "Int": pl.Int32,
+    "Long": pl.Int64,
+    "Float": pl.Float32,
+    "Double": pl.Float64,
 }
 
 class ColumnSchema(msgspec.Struct, frozen=True, omit_defaults=True):
