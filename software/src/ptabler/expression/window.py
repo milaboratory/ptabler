@@ -89,7 +89,7 @@ class WindowExpression(Expression, tag='aggregate'):
     Represents a generic window function call (e.g., sum, mean over a partition).
     Corresponds to the WindowExpression in TypeScript definitions.
     """
-    operation: AggregationType
+    aggregation: AggregationType
     value: 'AnyExpression'
     partition_by: list['AnyExpression']
 
@@ -99,7 +99,7 @@ class WindowExpression(Expression, tag='aggregate'):
         polars_partitions = [p.to_polars() for p in self.partition_by]
 
         agg_expr: pl.Expr
-        match self.operation:
+        match self.aggregation:
             case 'sum':
                 agg_expr = polars_value.sum()
             case 'mean':

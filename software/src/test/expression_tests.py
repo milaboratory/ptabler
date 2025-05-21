@@ -733,7 +733,7 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="sum_val_by_cat",
                     expression=WindowExpression(
-                        operation='sum',
+                        aggregation='sum',
                         value=ColumnReferenceExpression(name="value"),
                         partition_by=[ColumnReferenceExpression(name="category")]
                     )
@@ -741,7 +741,7 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="mean_val_by_cat",
                     expression=WindowExpression(
-                        operation='mean',
+                        aggregation='mean',
                         value=ColumnReferenceExpression(name="value"),
                         partition_by=[ColumnReferenceExpression(name="category")]
                     )
@@ -749,7 +749,7 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="total_count", # Count all IDs over the whole frame
                     expression=WindowExpression(
-                        operation='count',
+                        aggregation='count',
                         value=ColumnReferenceExpression(name="id"),
                         partition_by=[] # Empty partition_by for whole frame window
                     )
@@ -757,7 +757,7 @@ class StepTests(unittest.TestCase):
                  ColumnDefinition(
                     name="min_val_by_cat",
                     expression=WindowExpression(
-                        operation='min',
+                        aggregation='min',
                         value=ColumnReferenceExpression(name="value"),
                         partition_by=[ColumnReferenceExpression(name="category")]
                     )
@@ -765,7 +765,7 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="first_val_by_cat",
                     expression=WindowExpression(
-                        operation='first',
+                        aggregation='first',
                         value=ColumnReferenceExpression(name="value"),
                         partition_by=[ColumnReferenceExpression(name="category")]
                     )

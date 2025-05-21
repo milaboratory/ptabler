@@ -385,7 +385,7 @@ export interface WindowExpression {
   /** The type of operation, always 'aggregate'. Note: This might be confusing, consider 'window_aggregate' or similar if 'aggregate' is heavily used elsewhere for a different step type. */
   type: 'aggregate';
   /** The aggregation function to apply (e.g., 'sum', 'mean'). */
-  operation: AggregationType;
+  aggregation: AggregationType;
   /** The expression to apply the aggregation function to. */
   value: Expression;
   /** List of expressions to partition the data by. The aggregation is performed independently within each partition. */
