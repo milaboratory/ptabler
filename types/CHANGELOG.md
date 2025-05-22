@@ -1,5 +1,12 @@
 # @platforma-open/software-ptabler.types
 
+## 1.2.0
+
+### Minor Changes
+
+- 37ba5b4: - Add new expressions for floor, round, ceil, and cast operations.
+  - Use infer_schema & schema_override for CSV parsing.
+
 ## 1.1.0
 
 ### Minor Changes
