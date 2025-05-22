@@ -24,7 +24,7 @@ class ReadCsv(PStep, tag="read_csv"):
 
     delimiter: Optional[str] = None
     schema: Optional[List[ColumnSchema]] = None
-    columns: Optional[List[str]] = None # List of column names to read
+    infer_schema: bool = True # Added, defaults to True
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -36,38 +36,25 @@ class ReadCsv(PStep, tag="read_csv"):
         if self.delimiter is not None:
             scan_kwargs["separator"] = self.delimiter
         
-        if self.columns is not None:
-            scan_kwargs["columns"] = self.columns
-
-        processed_dtypes: Optional[Mapping[str, pl.DataType]] = None
-        processed_null_values: Optional[Mapping[str, str]] = None
+        defined_column_types: Dict[str, pl.DataType] = {}
+        defined_null_values: Dict[str, str] = {}
 
         if self.schema:
-            current_dtypes: Dict[str, pl.DataType] = {}
-            current_null_values: Dict[str, str] = {}
-            has_any_type_in_schema = False
-            has_any_null_in_schema = False
-
             for col_spec in self.schema:
                 if col_spec.type:
                     polars_type_obj = toPolarsType(col_spec.type)
-                    current_dtypes[col_spec.column] = polars_type_obj
-                    has_any_type_in_schema = True
+                    defined_column_types[col_spec.column] = polars_type_obj
                 
                 if col_spec.null_value is not None:
-                    current_null_values[col_spec.column] = col_spec.null_value
-                    has_any_null_in_schema = True
-            
-            if has_any_type_in_schema:
-                processed_dtypes = current_dtypes
-            if has_any_null_in_schema:
-                processed_null_values = current_null_values
+                    defined_null_values[col_spec.column] = col_spec.null_value
 
-        if processed_dtypes:
-            scan_kwargs["schema"] = processed_dtypes
+        scan_kwargs["infer_schema"] = self.infer_schema
+
+        if defined_column_types:
+            scan_kwargs["schema_override"] = defined_column_types
         
-        if processed_null_values:
-            scan_kwargs["null_values"] = processed_null_values
+        if defined_null_values:
+            scan_kwargs["null_values"] = defined_null_values
         
         lazy_frame = pl.scan_csv(os.path.join(global_settings.root_folder, normalize_path(self.file)), **scan_kwargs)
         

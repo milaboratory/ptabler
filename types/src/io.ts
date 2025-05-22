@@ -23,12 +23,22 @@ export interface ReadCsvStep {
   /** Optional: The delimiter character used in the CSV file. */
   delimiter?: string;
   /**
-   * Optional: An explicit schema definition for the CSV file.
-   * Each element in the array defines the schema for a column.
+   * Optional: Provides schema information for specific columns.
+   * If `infer_schema` is `true` (default), these definitions act as overrides
+   * to the types inferred by Polars. Each `ColumnSchema` can specify a `type`
+   * and/or a `nullValue`. If `infer_schema` is `false`, these definitions are
+   * used directly; for columns not listed, Polars' default behavior when no
+   * type is specified (e.g., reading as string) will apply.
    */
   schema?: ColumnSchema[];
-  /** Optional: A list of column names to read from the CSV. If omitted, all columns are read. */
-  columns?: string[];
+  /**
+   * Optional: Whether to infer the schema from the CSV file using Polars'
+   * default inference mechanism (e.g., reading a certain number of rows).
+   * Defaults to `true`. If set to `false`, type inference is disabled,
+   * and types will rely on the `schema` field or Polars' defaults for
+   * columns not specified in `schema`.
+   */
+  infer_schema?: boolean;
 }
 
 /**

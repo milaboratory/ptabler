@@ -3,4 +3,5 @@
 "@platforma-open/software-ptabler.types": patch
 ---
 
-Add new expressions for floor, round, ceil, and cast operations.
+- Add new expressions for floor, round, ceil, and cast operations.
+- Use infer_schema & schema_override for CSV parsing.
