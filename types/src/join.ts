@@ -35,6 +35,18 @@ export interface JoinStep {
   how: JoinStrategy;
 
   /**
+   * Determines how to handle key columns with the same name from both the left and right tables after the join.
+   * When set to \`true\` (the default), Polars will attempt to merge these identically named key columns into a single column in the output table.
+   * For 'inner', 'left', and 'right' joins, this is the standard behavior.
+   * For 'full' joins, setting this to \`true\` ensures the key columns are coalesced.
+   * When set to \`false\`, identically named key columns from the left and right tables will be kept separate in the output,
+   * with the column from the right table typically being renamed (e.g., by adding a suffix like '_right').
+   * This parameter mirrors the behavior of Polars' join coalescing logic.
+   * It does not apply to 'cross' joins, as they do not involve key columns in the same way.
+   */
+  coalesce?: boolean;
+
+  /**
    * An optional list to select and rename columns from the left table.
    * If provided, only these columns (plus any from `leftOn` not explicitly listed) will be included.
    * Use the `rename` property within a mapping to change a column's name.

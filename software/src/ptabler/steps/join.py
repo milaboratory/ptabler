@@ -27,6 +27,11 @@ class Join(PStep, tag="join"):
     # Optional fields to select and rename columns
     left_columns: Optional[List[ColumnMapping]] = None
     right_columns: Optional[List[ColumnMapping]] = None
+    # Determines how to handle key columns with the same name from both tables.
+    # Defaults to True, which means Polars will attempt to merge them.
+    # Set to False to keep them separate (e.g., with a suffix on the right table's column).
+    # This mirrors Polars' join coalesce behavior.
+    coalesce: bool = True
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -116,7 +121,8 @@ class Join(PStep, tag="join"):
                 left_on=current_left_on, # Should be the final names, present in the selected left_lf
                 right_on=current_right_on, # Should be the final names, present in the selected right_lf
                 how=self.how,
-                maintain_order="left_right"
+                maintain_order="left_right",
+                coalesce=self.coalesce # Pass the coalesce flag to Polars
             )
 
         updated_table_space = table_space.copy()

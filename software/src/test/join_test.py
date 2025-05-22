@@ -384,6 +384,80 @@ class JoinStepTests(unittest.TestCase):
 
         assert_frame_equal(result_df_ordered.sort(["pk1", "pk2_final_left"]), expected_df, check_dtypes=False)
 
+    def test_inner_join_coalesce_false(self):
+        """Tests an inner join with coalesce=False, expecting separate key columns."""
+        join_step = Join(
+            left_table="left_table",
+            right_table="right_table",
+            output_table="joined_output",
+            how="inner",
+            left_on=["id"],
+            right_on=["id"],
+            coalesce=False,
+            # Explicitly selecting columns to ensure behavior is clear
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                ColumnMapping(column="id"), # This will become "id_right" or similar due to coalesce=False
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
+        )
+        result_df = self._execute_join_workflow(join_step)
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "name": ["Alice", "Bob", "Charlie"],
+            "value_left": [10, 20, 30],
+            "id_right": [1, 2, 3], # Expected due to coalesce=False
+            "city": ["New York", "London", "Paris"],
+            "value_right": [100, 200, 300]
+        }).sort("id")
+
+        self.assertIn("id", result_df.columns)
+        self.assertIn("id_right", result_df.columns)
+        assert_frame_equal(result_df.sort("id"), expected_df, check_dtypes=False)
+
+    def test_inner_join_coalesce_true(self):
+        """Tests an inner join with coalesce=True (default behavior)."""
+        join_step = Join(
+            left_table="left_table",
+            right_table="right_table",
+            output_table="joined_output",
+            how="inner",
+            left_on=["id"],
+            right_on=["id"],
+            coalesce=True, # Explicitly True, should be default
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                # "id" from right_table is specified for the join key,
+                # but should be coalesced away in the final output.
+                ColumnMapping(column="id"),
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
+        )
+        result_df = self._execute_join_workflow(join_step)
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "name": ["Alice", "Bob", "Charlie"],
+            "value_left": [10, 20, 30],
+            "city": ["New York", "London", "Paris"],
+            "value_right": [100, 200, 300]
+        }).sort("id")
+
+        self.assertIn("id", result_df.columns)
+        self.assertNotIn("id_right", result_df.columns, "Column 'id_right' should not be present when coalesce=True.")
+        assert_frame_equal(result_df.sort("id"), expected_df, check_dtypes=False)
+
 
 if __name__ == '__main__':
     unittest.main()
