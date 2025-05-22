@@ -1,7 +1,13 @@
 /**
  * Defines the supported Polars primitive data types for schema definition.
+ *
+ * The following are aliases for convenience:
+ * - 'Int': maps to 'Int32'
+ * - 'Long': maps to 'Int64'
+ * - 'Float': maps to 'Float32'
+ * - 'Double': maps to 'Float64'
  */
-export type PolarsDataType =
+export type DataType =
   | 'Int8'
   | 'Int16'
   | 'Int32'
@@ -16,7 +22,12 @@ export type PolarsDataType =
   | 'String'
   | 'Date'
   | 'Datetime'
-  | 'Time';
+  | 'Time'
+  // Aliases
+  | 'Int'
+  | 'Long'
+  | 'Float'
+  | 'Double';
 
 /**
  * Represents the schema definition for a single column.
@@ -25,7 +36,7 @@ export interface ColumnSchema {
   /** The name of the column. */
   column: string;
   /** Optional: The expected Polars data type for this column. */
-  type?: PolarsDataType;
+  type?: DataType;
   /** Optional: A specific string to be interpreted as a null value for this column. */
   nullValue?: string;
 }

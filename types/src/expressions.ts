@@ -16,7 +16,10 @@ export type Expression =
   | FuzzyStringFilterExpression
   | WhenThenOtherwiseExpression
   | SubstringExpression
-  | MinMaxExpression;
+  | StringReplaceExpression
+  | MinMaxExpression
+  | FillNaExpression
+  | WindowExpression;
 
 /** Represents all possible expression types in the system. */
 export type ComparisonOperator = 'gt' | 'ge' | 'eq' | 'lt' | 'le' | 'neq';
@@ -115,8 +118,18 @@ export type HashType =
   | 'wyhash' // Non-cryptographic
   | 'xxh3'; // Non-cryptographic
 
-/** Defines the encoding for the hash output. */
-export type HashEncoding = 'hex' | 'base64';
+/**
+ * Defines the encoding for the hash output.
+ * - 'hex': Standard hexadecimal encoding.
+ * - 'base64': Standard base64 encoding.
+ * - 'base64_alphanumeric': Base64 encoding with non-alphanumeric characters (e.g., '+', '/') removed.
+ * - 'base64_alphanumeric_upper': Base64 encoding with non-alphanumeric characters removed and the result converted to uppercase.
+ */
+export type HashEncoding =
+  | 'hex'
+  | 'base64'
+  | 'base64_alphanumeric'
+  | 'base64_alphanumeric_upper';
 
 /** Represents a hashing operation on an expression. */
 export interface HashExpression {
@@ -128,6 +141,8 @@ export interface HashExpression {
   encoding: HashEncoding;
   /** The expression whose value will be hashed. */
   value: Expression;
+  /** Optional. Minimal number of entropy bits required. Affects encoding, truncating the result to the shortest string with the requested entropy. No error if bits exceed what the hash offers. */
+  bits?: number;
 }
 
 /** Represents a reference to a column by its name. */
@@ -291,6 +306,34 @@ export interface SubstringExpression {
   end?: number;
 }
 
+/**
+ * Represents a string replacement operation.
+ * Replaces occurrences of a pattern (regex or literal) in a string expression with a replacement string.
+ * The behavior is aligned with Polars' `replace` and `replace_all` functions.
+ *
+ * - If `literal` is true, the `pattern` is treated as a literal string. Otherwise, it's treated as a regular expression.
+ * - If `replaceAll` is true, all occurrences of the pattern are replaced. Otherwise, only the first occurrence is replaced.
+ *
+ * When using regular expressions (i.e., `literal` is false or undefined):
+ * - Positional capture groups can be referenced in the `replacement` string using `$n` or `${n}` (e.g., `$1` for the first group).
+ * - Named capture groups can be referenced using `${name}`.
+ * - To include a literal dollar sign (`$`) in the replacement, it must be escaped as `$$`.
+ */
+export interface StringReplaceExpression {
+  /** The type of operation, always 'str_replace'. */
+  type: 'str_replace';
+  /** The input string expression to operate on. */
+  value: Expression;
+  /** The pattern (regex or literal string) to search for. Can be a string literal or an expression evaluating to a string. */
+  pattern: Expression | string;
+  /** The replacement string. Can be a string literal or an expression evaluating to a string. Can use $n or ${name} for captured groups if pattern is a regex. */
+  replacement: Expression | string;
+  /** If true, replace all occurrences of the pattern. If false or undefined, replace only the first. Defaults to false. */
+  replaceAll?: boolean;
+  /** If true, treat the pattern as a literal string. If false or undefined, treat it as a regex. Defaults to false. */
+  literal?: boolean;
+}
+
 /** Defines the supported min/max operators. */
 export type MinMaxOperator = 'min' | 'max';
 
@@ -300,4 +343,51 @@ export interface MinMaxExpression {
   type: MinMaxOperator;
   /** An array of expressions to find the minimum or maximum value from. */
   operands: Expression[];
+}
+
+/**
+ * Represents a fill NA (null) operation.
+ * If the 'input' expression evaluates to null, the 'fillValue' expression is used.
+ * Otherwise, the 'input' expression's value is used.
+ * This is a convenience shortcut for a common pattern often implemented with
+ * conditional expressions (e.g., when(is_na(input), fillValue).otherwise(input)).
+ */
+export interface FillNaExpression {
+  /** The type of operation, always 'fill_na'. */
+  type: 'fill_na';
+  /** The primary expression to evaluate. */
+  input: Expression;
+  /** The expression whose value is used if 'input' is null. */
+  fillValue: Expression;
+}
+
+/**
+ * Defines standard aggregation functions that can be used in window expressions.
+ */
+export type AggregationType =
+  | 'sum'
+  | 'mean'
+  | 'median'
+  | 'min'
+  | 'max'
+  | 'std'
+  | 'var'
+  | 'count'
+  | 'first'
+  | 'last'
+  | 'n_unique';
+
+/**
+ * Represents a window function call.
+ * This allows applying an aggregation function over a specific partition of the data.
+ */
+export interface WindowExpression {
+  /** The type of operation, always 'aggregate'. Note: This might be confusing, consider 'window_aggregate' or similar if 'aggregate' is heavily used elsewhere for a different step type. */
+  type: 'aggregate';
+  /** The aggregation function to apply (e.g., 'sum', 'mean'). */
+  aggregation: AggregationType;
+  /** The expression to apply the aggregation function to. */
+  value: Expression;
+  /** List of expressions to partition the data by. The aggregation is performed independently within each partition. */
+  partitionBy: Expression[];
 }

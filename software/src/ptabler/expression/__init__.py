@@ -17,15 +17,16 @@ from .basics import (
 )
 from .string import (
     StringJoinExpression, ToUpperExpression, ToLowerExpression, StrLenExpression, SubstringExpression,
+    StringReplaceExpression,
 )
 from .fuzzy import (
     StringDistanceExpression, FuzzyStringFilterExpression,
 )
 from .conditional import (
-    WhenThenOtherwiseExpression,
+    WhenThenClause, WhenThenOtherwiseExpression, FillNaExpression
 )
 from .window import (
-    RankExpression, CumsumExpression,
+    RankExpression, CumsumExpression, WindowExpression
 )
 from .hash import (
     HashExpression,
@@ -72,14 +73,17 @@ AnyExpression = typing.Union[
     ToLowerExpression,
     StrLenExpression,
     SubstringExpression,
+    StringReplaceExpression,
     # Fuzzy String Operations
     StringDistanceExpression,
     FuzzyStringFilterExpression,
     # Conditional Logic
     WhenThenOtherwiseExpression,
+    FillNaExpression,
     # Window Functions
     RankExpression,
     CumsumExpression,
+    WindowExpression,
     # Hash Functions
     HashExpression,
     # String Distance Functions
@@ -130,11 +134,15 @@ __all__ = [
     "ToLowerExpression",
     "StrLenExpression",
     "SubstringExpression",
+    "StringReplaceExpression",
     "StringDistanceExpression",
     "FuzzyStringFilterExpression",
+    "WhenThenClause",
     "WhenThenOtherwiseExpression",
+    "FillNaExpression",
     "RankExpression",
     "CumsumExpression",
+    "WindowExpression",
     "HashExpression",
     "StringDistanceExpression",
     "FuzzyStringFilterExpression"

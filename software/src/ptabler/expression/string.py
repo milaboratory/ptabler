@@ -94,3 +94,53 @@ class SubstringExpression(Expression, tag='substring'):
         polars_value = self.value.to_polars()
 
         return polars_value.str.slice(offset=self.start, length=slice_length)
+
+
+class StringReplaceExpression(Expression, tag='str_replace'):
+    """
+    Represents a string replacement operation.
+    Corresponds to the StringReplaceExpression in TypeScript definitions.
+    Replaces occurrences of a pattern (regex or literal) in a string expression
+    with a replacement string.
+    """
+    value: 'AnyExpression'
+    """The input string expression to operate on."""
+    pattern: typing.Union['AnyExpression', str]
+    """The pattern (regex or literal string) to search for."""
+    replacement: typing.Union['AnyExpression', str]
+    """The replacement string. Can use $n or ${name} for captured groups if pattern is a regex."""
+    replace_all: typing.Optional[bool] = False
+    """If true, replace all occurrences. If false (default), replace only the first."""
+    literal: typing.Optional[bool] = False
+    """If true, treat pattern as literal. If false (default), treat as regex."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.replace or str.replace_all expression."""
+        polars_value = self.value.to_polars()
+
+        if isinstance(self.pattern, Expression):
+            polars_pattern = self.pattern.to_polars()
+        else:
+            polars_pattern = pl.lit(self.pattern)
+
+        if isinstance(self.replacement, Expression):
+            polars_replacement = self.replacement.to_polars()
+        else:
+            polars_replacement = pl.lit(self.replacement)
+
+        use_literal = self.literal or False
+
+        if self.replace_all:
+            return polars_value.str.replace_all(
+                pattern=polars_pattern,
+                value=polars_replacement,
+                literal=use_literal
+            )
+        else:
+            # Polars' replace takes 'n' for number of replacements. n=1 for first match.
+            return polars_value.str.replace(
+                pattern=polars_pattern,
+                value=polars_replacement,
+                literal=use_literal,
+                n=1
+            )

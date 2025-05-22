@@ -55,3 +55,20 @@ class WhenThenOtherwiseExpression(Expression, tag='when_then_otherwise'):
         polars_expr = polars_expr.otherwise(self.otherwise.to_polars())
 
         return polars_expr
+
+
+class FillNaExpression(Expression, tag='fill_na'):
+    """
+    Represents a fill NA (null) operation.
+    If the 'input' expression evaluates to null, the 'fillValue' expression is used.
+    Otherwise, the 'input' expression's value is used.
+    Corresponds to the FillNaExpression in TypeScript.
+    """
+    input: 'AnyExpression'  # : The primary expression to evaluate.
+    fill_value: 'AnyExpression'  # : The expression whose value is used if 'input' is null.
+
+    def to_polars(self) -> pl.Expr:
+        """
+        Converts the expression to a Polars expression using fill_null.
+        """
+        return self.input.to_polars().fill_null(self.fill_value.to_polars())

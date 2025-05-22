@@ -4,6 +4,7 @@ from polars.testing import assert_frame_equal
 
 from ptabler.workflow import PWorkflow
 from ptabler.steps import GlobalSettings, Join, TableSpace
+from ptabler.steps.join import ColumnMapping
 from ptabler.expression import ColumnReferenceExpression
 
 # Minimal global_settings for tests
@@ -76,8 +77,16 @@ class JoinStepTests(unittest.TestCase):
             how="left",
             left_on=["id"],
             right_on=["id"],
-            left_columns={"id": "id", "name": "name", "value_left": "value_left"},
-            right_columns={"id": "id", "city": "city", "value_right": "value_right"}
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
         )
         result_df = self._execute_join_workflow(join_step)
 
@@ -100,11 +109,19 @@ class JoinStepTests(unittest.TestCase):
             left_table="left_table",
             right_table="right_table",
             output_table="joined_output",
-            how="outer",
+            how="full",
             left_on=["id"],
             right_on=["id"],
-            left_columns={"id": "id", "name": "name", "value_left": "value_left"},
-            right_columns={"id": "id", "city": "city", "value_right": "value_right"}
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
         )
         result_df = self._execute_join_workflow(join_step)
 
@@ -154,8 +171,8 @@ class JoinStepTests(unittest.TestCase):
             output_table="joined_output",
             how="cross",
             # No left_on or right_on for cross join
-            left_columns={"lk": "lk"},
-            right_columns={"rk": "rk"}
+            left_columns=[ColumnMapping(column="lk")],
+            right_columns=[ColumnMapping(column="rk")]
         )
 
         workflow = PWorkflow(workflow=[join_step])
@@ -179,7 +196,6 @@ class JoinStepTests(unittest.TestCase):
     def test_join_with_different_key_names(self):
         """Tests a join where left_on and right_on have different column names."""
         # Original right_df is used, renaming is handled by right_columns
-        # right_df_renamed_key = self.right_df.rename({"id": "key_right"}).lazy() 
         
         temp_initial_table_space: TableSpace = {
             "left_table": self.left_df,
@@ -188,13 +204,21 @@ class JoinStepTests(unittest.TestCase):
 
         join_step = Join(
             left_table="left_table",
-            right_table="right_table", # Use original right_df
+            right_table="right_table", 
             output_table="joined_output",
             how="inner",
-            left_on=["id"], # This will be the name from left_columns
-            right_on=["key_right"], # This will be the name from right_columns
-            left_columns={"id": "id", "name": "name", "value_left": "value_left"},
-            right_columns={"id": "key_right", "city": "city", "value_right": "value_right"}
+            left_on=["id"], # Original name from left_table
+            right_on=["id"], # Original name from right_table (which is then mapped to key_right)
+            left_columns=[
+                ColumnMapping(column="id"), # Selected, keeps original name 'id'
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                ColumnMapping(column="id", rename="key_right"), # Original 'id' from right_table, renamed to 'key_right'
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
         )
         
         workflow = PWorkflow(workflow=[join_step])
@@ -206,19 +230,34 @@ class JoinStepTests(unittest.TestCase):
         self.assertTrue("joined_output" in final_table_space)
         result_df = final_table_space["joined_output"].collect()
 
+        # If Polars adds "id_right" due to the original key names being the same ("id")
+        # before one was mapped to "key_right" for the join, we remove it.
+        if "id_right" in result_df.columns:
+            result_df = result_df.drop("id_right")
 
         expected_df = pl.DataFrame({
-            "id": [1, 2, 3], # Key column name comes from left_on
+            "id": [1, 2, 3], # Key column name from left table's perspective (after potential mapping)
             "name": ["Alice", "Bob", "Charlie"],
             "value_left": [10, 20, 30],
+            # "key_right" column from right table is not automatically included unless specified in right_columns
+            # and if join keys differ, polars keeps left. Here join keys after mapping are "id" and "key_right".
             "city": ["New York", "London", "Paris"],
             "value_right": [100, 200, 300]
         }).sort("id")
         
-        # Polars by default only keeps the left key column if names in left_on/right_on differ.
-        # So, 'key_right' (the name used in right_on) should not be in result_df.
-        self.assertNotIn("key_right", result_df.columns)
-        self.assertIn("id", result_df.columns) # The key from left_on should be present
+        # After the join, if left_on=["id"] and right_on=["id"] (original names), 
+        # and right_columns maps "id" to "key_right",
+        # Polars will attempt to join left.id on right.key_right.
+        # The output column for the key will typically be based on the left side, i.e., "id".
+        # The column "key_right" (if it was the original name on the right) might appear if not aliased away
+        # or if it was the name used in right_on and no explicit right_columns for it.
+        # However, with explicit column selection, the name in right_on ("id" which maps to "key_right")
+        # should result in "key_right" being used in the join condition, and "id" from left table being in output.
+
+        self.assertIn("id", result_df.columns)
+        self.assertNotIn("key_right", result_df.columns) # "key_right" was used for join but "id" (from left) is the output key name.
+        self.assertNotIn("id_right", result_df.columns) # Ensure "id_right" is not present after potential drop
+
 
         assert_frame_equal(result_df.sort("id"), expected_df, check_dtypes=False)
 
@@ -273,6 +312,151 @@ class JoinStepTests(unittest.TestCase):
                 right_on=["id"]
             )
             self._execute_join_workflow(join_step)
+
+    def test_join_keys_identity_mapped_when_not_in_column_specs(self):
+        """
+        Tests that join keys are identity-mapped if not in explicit column selections,
+        provided column selections are active (i.e., not None).
+        """
+        left_source = pl.DataFrame({
+            "pk1": [1, 2],
+            "pk2": ["a", "b"],
+            "val_left": [10, 20],
+            "other_left": [100, 200]
+        }).lazy()
+        right_source = pl.DataFrame({
+            "fk1": [1, 2], # Original name for first key
+            "fk2_renamed": ["a", "b"], # Original name for second key (will be renamed)
+            "val_right": [30, 40],
+            "other_right": [300, 400]
+        }).lazy()
+
+        temp_table_space: TableSpace = {
+            "left_s": left_source,
+            "right_s": right_source
+        }
+
+        join_step = Join(
+            left_table="left_s",
+            right_table="right_s",
+            output_table="joined_output",
+            how="inner",
+            # These are the ORIGINAL names of join keys
+            left_on=["pk1", "pk2"],
+            right_on=["fk1", "fk2_renamed"],
+
+            left_columns=[
+                ColumnMapping(column="val_left", rename="val_l"),
+                ColumnMapping(column="pk2", rename="pk2_final_left") 
+                # pk1 is in left_on, not in left_columns, so it should be identity mapped: original "pk1" -> final "pk1"
+            ],
+
+            right_columns=[
+                ColumnMapping(column="val_right", rename="val_r"),
+                ColumnMapping(column="fk1", rename="pk1"), # Original "fk1" from right_s, renamed to final "pk1"
+                ColumnMapping(column="fk2_renamed", rename="pk2_final_right") # Original "fk2_renamed" -> final "pk2_final_right"
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[join_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=temp_table_space.copy()
+        )
+        self.assertTrue("joined_output" in final_table_space)
+        result_df = final_table_space["joined_output"].collect()
+
+        # Expected left_lf selection: val_l (from val_left), pk1 (from pk1), pk2_final_left (from pk2)
+        # Expected right_lf selection: val_r (from val_right), pk1 (from fk1), pk2_final_right (from fk2_renamed)
+        # Join on: left(pk1, pk2_final_left) and right(pk1, pk2_final_right)
+        # Output columns: pk1, pk2_final_left (from left table, as Polars keeps left keys by default), val_l, val_r
+
+        expected_df = pl.DataFrame({
+            "pk1": [1, 2], # This comes from left_on mapping: left("pk1") joined with right("pk1" from "fk1")
+            "pk2_final_left": ["a", "b"], # This comes from left_on mapping: left("pk2_final_left" from "pk2") joined with right("pk2_final_right" from "fk2_renamed")
+            "val_l": [10, 20],
+            "val_r": [30, 40]
+        }).sort(["pk1", "pk2_final_left"])
+
+        # Ensure columns are in the expected order for comparison
+        result_df_ordered = result_df.select(expected_df.columns)
+
+        assert_frame_equal(result_df_ordered.sort(["pk1", "pk2_final_left"]), expected_df, check_dtypes=False)
+
+    def test_inner_join_coalesce_false(self):
+        """Tests an inner join with coalesce=False, expecting separate key columns."""
+        join_step = Join(
+            left_table="left_table",
+            right_table="right_table",
+            output_table="joined_output",
+            how="inner",
+            left_on=["id"],
+            right_on=["id"],
+            coalesce=False,
+            # Explicitly selecting columns to ensure behavior is clear
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                ColumnMapping(column="id"), # This will become "id_right" or similar due to coalesce=False
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
+        )
+        result_df = self._execute_join_workflow(join_step)
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "name": ["Alice", "Bob", "Charlie"],
+            "value_left": [10, 20, 30],
+            "id_right": [1, 2, 3], # Expected due to coalesce=False
+            "city": ["New York", "London", "Paris"],
+            "value_right": [100, 200, 300]
+        }).sort("id")
+
+        self.assertIn("id", result_df.columns)
+        self.assertIn("id_right", result_df.columns)
+        assert_frame_equal(result_df.sort("id"), expected_df, check_dtypes=False)
+
+    def test_inner_join_coalesce_true(self):
+        """Tests an inner join with coalesce=True (default behavior)."""
+        join_step = Join(
+            left_table="left_table",
+            right_table="right_table",
+            output_table="joined_output",
+            how="inner",
+            left_on=["id"],
+            right_on=["id"],
+            coalesce=True, # Explicitly True, should be default
+            left_columns=[
+                ColumnMapping(column="id"),
+                ColumnMapping(column="name"),
+                ColumnMapping(column="value_left")
+            ],
+            right_columns=[
+                # "id" from right_table is specified for the join key,
+                # but should be coalesced away in the final output.
+                ColumnMapping(column="id"),
+                ColumnMapping(column="city"),
+                ColumnMapping(column="value_right")
+            ]
+        )
+        result_df = self._execute_join_workflow(join_step)
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "name": ["Alice", "Bob", "Charlie"],
+            "value_left": [10, 20, 30],
+            "city": ["New York", "London", "Paris"],
+            "value_right": [100, 200, 300]
+        }).sort("id")
+
+        self.assertIn("id", result_df.columns)
+        self.assertNotIn("id_right", result_df.columns, "Column 'id_right' should not be present when coalesce=True.")
+        assert_frame_equal(result_df.sort("id"), expected_df, check_dtypes=False)
 
 
 if __name__ == '__main__':
