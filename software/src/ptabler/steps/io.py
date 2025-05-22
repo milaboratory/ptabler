@@ -51,7 +51,7 @@ class ReadCsv(PStep, tag="read_csv"):
         scan_kwargs["infer_schema"] = self.infer_schema
 
         if defined_column_types:
-            scan_kwargs["schema_override"] = defined_column_types
+            scan_kwargs["schema_overrides"] = defined_column_types
         
         if defined_null_values:
             scan_kwargs["null_values"] = defined_null_values
