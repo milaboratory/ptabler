@@ -3,37 +3,15 @@ import os
 from typing import List, Optional, Dict, Mapping, Any 
 import msgspec
 
+from ptabler.common import toPolarsType, PType
+
 from .base import GlobalSettings, PStep, TableSpace
 from .util import normalize_path
-
-# Mapping from PolarsDataType string representations (from TS) to actual Polars dtypes
-POLARS_TYPE_STRING_TO_POLARS_TYPE: Mapping[str, pl.DataType] = {
-    "Int8": pl.Int8,
-    "Int16": pl.Int16,
-    "Int32": pl.Int32,
-    "Int64": pl.Int64,
-    "UInt8": pl.UInt8,
-    "UInt16": pl.UInt16,
-    "UInt32": pl.UInt32,
-    "UInt64": pl.UInt64,
-    "Float32": pl.Float32,
-    "Float64": pl.Float64,
-    "Boolean": pl.Boolean,
-    "String": pl.String,  # pl.String is an alias for pl.Utf8
-    "Date": pl.Date,
-    "Datetime": pl.Datetime, # Default time_unit is 'us' if parsed from string
-    "Time": pl.Time,
-    # Aliases
-    "Int": pl.Int32,
-    "Long": pl.Int64,
-    "Float": pl.Float32,
-    "Double": pl.Float64,
-}
 
 class ColumnSchema(msgspec.Struct, frozen=True, omit_defaults=True):
     """Defines the schema for a single column, mirroring the TS definition."""
     column: str
-    type: Optional[str] = None  # String representation like 'Int64', 'String'
+    type: Optional[PType] = None
     null_value: Optional[str] = None # Specific string to be interpreted as null for this column
 
 class ReadCsv(PStep, tag="read_csv"):
@@ -46,7 +24,7 @@ class ReadCsv(PStep, tag="read_csv"):
 
     delimiter: Optional[str] = None
     schema: Optional[List[ColumnSchema]] = None
-    columns: Optional[List[str]] = None # List of column names to read
+    infer_schema: bool = True # Added, defaults to True
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -58,42 +36,25 @@ class ReadCsv(PStep, tag="read_csv"):
         if self.delimiter is not None:
             scan_kwargs["separator"] = self.delimiter
         
-        if self.columns is not None:
-            scan_kwargs["columns"] = self.columns
-
-        processed_dtypes: Optional[Dict[str, pl.DataType]] = None
-        processed_null_values: Optional[Dict[str, str]] = None
+        defined_column_types: Dict[str, pl.DataType] = {}
+        defined_null_values: Dict[str, str] = {}
 
         if self.schema:
-            current_dtypes: Dict[str, pl.DataType] = {}
-            current_null_values: Dict[str, str] = {}
-            has_any_type_in_schema = False
-            has_any_null_in_schema = False
-
             for col_spec in self.schema:
                 if col_spec.type:
-                    polars_type_obj = POLARS_TYPE_STRING_TO_POLARS_TYPE.get(col_spec.type)
-                    if polars_type_obj:
-                        current_dtypes[col_spec.column] = polars_type_obj
-                        has_any_type_in_schema = True
-                    else:
-                        # Consider logging this warning more formally if a logging system is in place
-                        print(f"Warning: Unknown Polars type string '{col_spec.type}' for column '{col_spec.column}' in ReadCsv step for path '{self.file}'.")
+                    polars_type_obj = toPolarsType(col_spec.type)
+                    defined_column_types[col_spec.column] = polars_type_obj
                 
                 if col_spec.null_value is not None:
-                    current_null_values[col_spec.column] = col_spec.null_value
-                    has_any_null_in_schema = True
-            
-            if has_any_type_in_schema:
-                processed_dtypes = current_dtypes
-            if has_any_null_in_schema:
-                processed_null_values = current_null_values
+                    defined_null_values[col_spec.column] = col_spec.null_value
 
-        if processed_dtypes:
-            scan_kwargs["dtypes"] = processed_dtypes
+        scan_kwargs["infer_schema"] = self.infer_schema
+
+        if defined_column_types:
+            scan_kwargs["schema_overrides"] = defined_column_types
         
-        if processed_null_values:
-            scan_kwargs["null_values"] = processed_null_values
+        if defined_null_values:
+            scan_kwargs["null_values"] = defined_null_values
         
         lazy_frame = pl.scan_csv(os.path.join(global_settings.root_folder, normalize_path(self.file)), **scan_kwargs)
         

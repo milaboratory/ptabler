@@ -3,6 +3,8 @@ import typing
 import operator
 import polars as pl
 
+from ptabler.common import PType, toPolarsType
+
 from .base import Expression
 
 # Comparison Expressions
@@ -103,12 +105,38 @@ class SqrtExpression(UnaryArithmeticBaseExpression, tag='sqrt'):
         return self.value.to_polars().sqrt()
 
 
+class FloorExpression(UnaryArithmeticBaseExpression, tag='floor'):
+    def to_polars(self) -> pl.Expr:
+        return self.value.to_polars().floor()
+
+
+class RoundExpression(UnaryArithmeticBaseExpression, tag='round'):
+    def to_polars(self) -> pl.Expr:
+        return self.value.to_polars().round()
+
+
+class CeilExpression(UnaryArithmeticBaseExpression, tag='ceil'):
+    def to_polars(self) -> pl.Expr:
+        return self.value.to_polars().ceil()
+
+
 class UnaryMinusExpression(UnaryArithmeticBaseExpression, tag='negate'):
     def to_polars(self) -> pl.Expr:
         return -self.value.to_polars()  # Unary minus operator
 
+# Type casting
+
+
+class CastExpression(Expression, tag='cast'):
+    value: 'AnyExpression'
+    dtype: PType
+    strict: typing.Optional[bool] = None
+
+    def to_polars(self) -> pl.Expr:
+        return self.value.to_polars().cast(toPolarsType(self.dtype), strict=self.strict or False)
 
 # Boolean Logic Expressions
+
 
 class AndExpression(Expression, tag='and'):
     operands: list['AnyExpression']

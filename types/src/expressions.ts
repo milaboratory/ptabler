@@ -1,7 +1,10 @@
+import type { DataType } from './common';
+
 export type Expression =
   | ComparisonExpression
   | BinaryArithmeticExpression
   | UnaryArithmeticExpression
+  | CastExpression
   | BooleanLogicExpression
   | NotExpression
   | NullCheckExpression
@@ -59,7 +62,10 @@ export type UnaryArithmeticOperator =
   | 'log2'
   | 'abs'
   | 'sqrt'
-  | 'minus';
+  | 'minus'
+  | 'floor'
+  | 'round'
+  | 'ceil';
 
 /** Represents a unary arithmetic operation on a single expression. */
 export interface UnaryArithmeticExpression {
@@ -67,6 +73,23 @@ export interface UnaryArithmeticExpression {
   type: UnaryArithmeticOperator;
   /** The expression to operate on. */
   value: Expression;
+}
+
+/**
+ * Represents a type casting operation that converts the result of an expression to a specified data type.
+ */
+export interface CastExpression {
+  /** The type of operation, always 'cast'. */
+  type: 'cast';
+  /** The expression whose result will be cast to the target data type. */
+  value: Expression;
+  /** The target data type to cast the expression result to. */
+  dtype: DataType;
+  /**
+   * Whether to use strict casting mode. If true, conversion errors and overflows will throw exceptions.
+   * If false or undefined, uses non-strict mode where failures result in null values. Defaults to false.
+   */
+  strict?: boolean;
 }
 
 /** Defines the supported boolean list operators. */
