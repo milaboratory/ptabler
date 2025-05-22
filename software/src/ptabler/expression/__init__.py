@@ -12,6 +12,7 @@ from .basics import (
     GtExpression, GeExpression, EqExpression, LtExpression, LeExpression, NeqExpression, PlusExpression,
     MinusExpression, MultiplyExpression, TrueDivExpression, FloorDivExpression, IsNaExpression, IsNotNaExpression,
     Log10Expression, LogExpression, Log2Expression, AbsExpression, SqrtExpression, UnaryMinusExpression,
+    FloorExpression, RoundExpression, CeilExpression, CastExpression,
     OrExpression, NotExpression, ColumnReferenceExpression, ConstantValueExpression, MinExpression, MaxExpression,
     AndExpression,
 )
@@ -54,6 +55,10 @@ AnyExpression = typing.Union[
     AbsExpression,
     SqrtExpression,
     UnaryMinusExpression,
+    FloorExpression,
+    RoundExpression,
+    CeilExpression,
+    CastExpression,
     # Boolean Logic
     AndExpression,
     OrExpression,
@@ -120,6 +125,9 @@ __all__ = [
     "AbsExpression",
     "SqrtExpression",
     "UnaryMinusExpression",
+    "FloorExpression",
+    "RoundExpression",
+    "CeilExpression",
     "AndExpression",
     "OrExpression",
     "NotExpression",

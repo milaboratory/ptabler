@@ -3,37 +3,15 @@ import os
 from typing import List, Optional, Dict, Mapping, Any 
 import msgspec
 
+from ptabler.common import toPolarsType, PType
+
 from .base import GlobalSettings, PStep, TableSpace
 from .util import normalize_path
-
-# Mapping from PolarsDataType string representations (from TS) to actual Polars dtypes
-POLARS_TYPE_STRING_TO_POLARS_TYPE: Mapping[str, pl.DataType] = {
-    "Int8": pl.Int8,
-    "Int16": pl.Int16,
-    "Int32": pl.Int32,
-    "Int64": pl.Int64,
-    "UInt8": pl.UInt8,
-    "UInt16": pl.UInt16,
-    "UInt32": pl.UInt32,
-    "UInt64": pl.UInt64,
-    "Float32": pl.Float32,
-    "Float64": pl.Float64,
-    "Boolean": pl.Boolean,
-    "String": pl.String,  # pl.String is an alias for pl.Utf8
-    "Date": pl.Date,
-    "Datetime": pl.Datetime, # Default time_unit is 'us' if parsed from string
-    "Time": pl.Time,
-    # Aliases
-    "Int": pl.Int32,
-    "Long": pl.Int64,
-    "Float": pl.Float32,
-    "Double": pl.Float64,
-}
 
 class ColumnSchema(msgspec.Struct, frozen=True, omit_defaults=True):
     """Defines the schema for a single column, mirroring the TS definition."""
     column: str
-    type: Optional[str] = None  # String representation like 'Int64', 'String'
+    type: Optional[PType] = None
     null_value: Optional[str] = None # Specific string to be interpreted as null for this column
 
 class ReadCsv(PStep, tag="read_csv"):
@@ -61,8 +39,8 @@ class ReadCsv(PStep, tag="read_csv"):
         if self.columns is not None:
             scan_kwargs["columns"] = self.columns
 
-        processed_dtypes: Optional[Dict[str, pl.DataType]] = None
-        processed_null_values: Optional[Dict[str, str]] = None
+        processed_dtypes: Optional[Mapping[str, pl.DataType]] = None
+        processed_null_values: Optional[Mapping[str, str]] = None
 
         if self.schema:
             current_dtypes: Dict[str, pl.DataType] = {}
@@ -72,13 +50,9 @@ class ReadCsv(PStep, tag="read_csv"):
 
             for col_spec in self.schema:
                 if col_spec.type:
-                    polars_type_obj = POLARS_TYPE_STRING_TO_POLARS_TYPE.get(col_spec.type)
-                    if polars_type_obj:
-                        current_dtypes[col_spec.column] = polars_type_obj
-                        has_any_type_in_schema = True
-                    else:
-                        # Consider logging this warning more formally if a logging system is in place
-                        print(f"Warning: Unknown Polars type string '{col_spec.type}' for column '{col_spec.column}' in ReadCsv step for path '{self.file}'.")
+                    polars_type_obj = toPolarsType(col_spec.type)
+                    current_dtypes[col_spec.column] = polars_type_obj
+                    has_any_type_in_schema = True
                 
                 if col_spec.null_value is not None:
                     current_null_values[col_spec.column] = col_spec.null_value
@@ -90,7 +64,7 @@ class ReadCsv(PStep, tag="read_csv"):
                 processed_null_values = current_null_values
 
         if processed_dtypes:
-            scan_kwargs["dtypes"] = processed_dtypes
+            scan_kwargs["schema"] = processed_dtypes
         
         if processed_null_values:
             scan_kwargs["null_values"] = processed_null_values
