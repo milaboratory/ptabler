@@ -3,7 +3,12 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [
+    [
+      "@platforma-open/milaboratories.software-ptabler",
+      "@platforma-open/milaboratories.software-ptabler.schema"
+    ]
+  ],
   "access": "restricted",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
