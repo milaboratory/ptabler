@@ -1,5 +1,12 @@
 # @platforma-open/software-ptabler.types
 
+## 1.3.0
+
+### Minor Changes
+
+- 3d4f2d2: - Module rename
+  - Add Select and WithColumns steps
+
 ## 1.2.0
 
 ### Minor Changes
