@@ -1,10 +1,12 @@
+import type { Expression } from './expressions';
+
 /**
  * Defines a single sort instruction, specifying the column, sort order,
  * and null handling strategy.
  */
 export interface SortDirective {
-  /** The name of the column to sort by. */
-  column: string;
+  /** The expression to sort by. */
+  value: Expression;
 
   /**
    * Whether to sort in descending order for this column.

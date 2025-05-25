@@ -3,15 +3,16 @@ import msgspec
 from typing import List, Optional
 
 from .base import GlobalSettings, PStep, TableSpace
+from ..expression import AnyExpression
 
 
 class SortDirective(msgspec.Struct, frozen=True, rename="camel"):
     """
-    Defines a single sort instruction, specifying the column, sort order,
+    Defines a single sort instruction, specifying the expression, sort order,
     and null handling strategy.
     Corresponds to the SortDirective in TypeScript.
     """
-    column: str
+    value: AnyExpression
     descending: Optional[bool] = None  # Defaults to False (ascending)
     nulls_last: Optional[bool] = None # Defaults to Polars default (nulls smallest)
 
@@ -54,12 +55,12 @@ class Sort(PStep, tag="sort"):
 
         lf = table_space[self.input_table]
 
-        sort_by_columns: List[str] = []
+        sort_by_expressions: List[pl.Expr] = []
         descending_flags: List[bool] = []
         nulls_last_flags: List[bool] = []
 
         for directive in self.by:
-            sort_by_columns.append(directive.column)
+            sort_by_expressions.append(directive.value.to_polars())
             
             current_descending = directive.descending if directive.descending is not None else False
             descending_flags.append(current_descending)
@@ -74,7 +75,7 @@ class Sort(PStep, tag="sort"):
                 nulls_last_flags.append(current_descending)
         
         sorted_lf = lf.sort(
-            by=sort_by_columns,
+            by=sort_by_expressions,
             descending=descending_flags,
             nulls_last=nulls_last_flags,
             maintain_order=True

@@ -6,6 +6,7 @@ from typing import Optional
 from ptabler.workflow import PWorkflow
 from ptabler.steps import GlobalSettings, TableSpace, Sort
 from ptabler.steps.sort import SortDirective
+from ptabler.expression import ColumnReferenceExpression
 
 # Minimal global_settings for tests
 global_settings = GlobalSettings(root_folder=".")
@@ -51,7 +52,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data",
             output_table="sorted_output",
-            by=[SortDirective(column="value")] # Default ascending, default nulls
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"))] # Default ascending, default nulls
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_basic)
         expected_df = pl.DataFrame({
@@ -65,7 +66,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data",
             output_table="sorted_output",
-            by=[SortDirective(column="value", descending=True)]
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"), descending=True)]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_basic)
         expected_df = pl.DataFrame({
@@ -81,8 +82,8 @@ class SortStepTests(unittest.TestCase):
             input_table="input_data",
             output_table="sorted_output",
             by=[
-                SortDirective(column="category", descending=False),
-                SortDirective(column="value", descending=True)
+                SortDirective(value=ColumnReferenceExpression(name="category"), descending=False),
+                SortDirective(value=ColumnReferenceExpression(name="value"), descending=True)
             ]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_basic)
@@ -97,7 +98,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_null",
             output_table="sorted_output",
-            by=[SortDirective(column="value", descending=False, nulls_last=True)]
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"), descending=False, nulls_last=True)]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_null)
         expected_df = pl.DataFrame({
@@ -112,7 +113,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_null",
             output_table="sorted_output",
-            by=[SortDirective(column="value", descending=False, nulls_last=False)]
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"), descending=False, nulls_last=False)]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_null)
         expected_df = pl.DataFrame({
@@ -127,7 +128,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_null",
             output_table="sorted_output",
-            by=[SortDirective(column="value", descending=False, nulls_last=None)] # Explicitly None
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"), descending=False, nulls_last=None)] # Explicitly None
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_null)
         # Expected same as nulls_first_ascending
@@ -142,7 +143,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_null",
             output_table="sorted_output",
-            by=[SortDirective(column="value", descending=True, nulls_last=None)] # Explicitly None
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"), descending=True, nulls_last=None)] # Explicitly None
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_null)
         expected_df = pl.DataFrame({
@@ -155,7 +156,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="input_data_stability",
             output_table="sorted_output",
-            by=[SortDirective(column="key", descending=False)]
+            by=[SortDirective(value=ColumnReferenceExpression(name="key"), descending=False)]
         )
         result_df = self._execute_sort_workflow(sort_step, self.initial_table_space_stability)
         
@@ -173,7 +174,7 @@ class SortStepTests(unittest.TestCase):
         sort_step = Sort(
             input_table="non_existent_table",
             output_table="sorted_output",
-            by=[SortDirective(column="value")]
+            by=[SortDirective(value=ColumnReferenceExpression(name="value"))]
         )
         with self.assertRaisesRegex(ValueError, "Input table 'non_existent_table' not found in tablespace."):
             self._execute_sort_workflow(sort_step, self.initial_table_space_basic)
