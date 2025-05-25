@@ -62,7 +62,7 @@ export type UnaryArithmeticOperator =
   | 'log2'
   | 'abs'
   | 'sqrt'
-  | 'minus'
+  | 'negate'
   | 'floor'
   | 'round'
   | 'ceil';

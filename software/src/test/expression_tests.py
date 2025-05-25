@@ -5,7 +5,7 @@ import math # Added for math.ceil in expected value generation logic
 
 from ptabler.workflow import PWorkflow
 from ptabler.steps import GlobalSettings, AddColumns, Filter, TableSpace
-from ptabler.steps.add_columns import ColumnDefinition
+from software.src.ptabler.steps.basics import ColumnDefinition
 from ptabler.expression import (
     ColumnReferenceExpression, ConstantValueExpression,
     PlusExpression, EqExpression, GtExpression, AndExpression,
@@ -16,6 +16,7 @@ from ptabler.expression import (
     HashExpression,
     StringReplaceExpression,
     FillNaExpression,
+    UnaryMinusExpression,
 )
 
 # Minimal global_settings for tests not relying on file I/O from a specific root_folder
@@ -801,6 +802,47 @@ class StepTests(unittest.TestCase):
         # Sort result by the same keys as expected_df if not already guaranteed by processing
         result_df = result_df.sort(["category", "order_for_first"]) 
         
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_add_columns_unary_minus(self):
+        """
+        Tests AddColumns step with a UnaryMinusExpression.
+        Adds a column 'negated_value' = -col("value").
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "value": [10, -5, 0]
+        }).lazy()
+        initial_table_space: TableSpace = {"input_table": initial_df}
+
+        add_col_step = AddColumns(
+            table="input_table",
+            columns=[
+                ColumnDefinition(
+                    name="negated_value",
+                    expression=UnaryMinusExpression(
+                        value=ColumnReferenceExpression(name="value")
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[add_col_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3],
+            "value": [10, -5, 0],
+            "negated_value": [-10, 5, 0]
+        })
+
+        result_df = final_table_space["input_table"].collect()
+        # Ensure column order for comparison
+        result_df = result_df.select(expected_df.columns)
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 
 

@@ -1,5 +1,5 @@
 {
-  "name": "@platforma-open/software-ptabler.types",
+  "name": "@platforma-open/milaboratories.software-ptabler.schema",
   "version": "1.2.0",
   "description": "Type definitions for PTabler",
   "types": "./dist/index.d.ts",
