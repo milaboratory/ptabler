@@ -70,8 +70,8 @@ export interface AggregateStep {
   inputTable: string;
   /** The name to be assigned to the newly created aggregated table in the tablespace. */
   outputTable: string;
-  /** An optional list of column names to group by before performing aggregations. */
-  groupBy: string[];
+  /** An optional list of column names or expressions to group by before performing aggregations. */
+  groupBy: (string | Expression)[];
   /** An array of aggregation operations to apply to the input table. */
   aggregations: (StandardAggregationOperation | ByClauseAggregationOperation)[];
 }
