@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler.types
 
+## 1.4.0
+
+### Minor Changes
+
+- ff909b6: Support for group by expression
+
 ## 1.3.0
 
 ### Minor Changes
