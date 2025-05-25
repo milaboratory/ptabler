@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler.types
 
+## 1.5.0
+
+### Minor Changes
+
+- 40f3aab: Refactored the sort step to use expressions instead of column names for defining sort criteria
+
 ## 1.4.0
 
 ### Minor Changes
