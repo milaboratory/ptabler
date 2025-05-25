@@ -1,6 +1,6 @@
 import polars as pl
 import msgspec
-from typing import Union
+from typing import Union, List
 
 from .base import GlobalSettings, PStep, TableSpace
 from ..expression import AnyExpression
@@ -136,7 +136,7 @@ class Aggregate(PStep, tag="aggregate"):
     """
     input_table: str
     output_table: str
-    group_by: list[str]
+    group_by: List[Union[str, AnyExpression]]
     aggregations: list[AnyAggregationOperation]
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
@@ -152,8 +152,17 @@ class Aggregate(PStep, tag="aggregate"):
 
         aggregated_lf: pl.LazyFrame
         if len(self.group_by) > 0:
+            polars_group_by_exprs: List[Union[str, pl.Expr]] = []
+            for item in self.group_by:
+                if isinstance(item, str):
+                    polars_group_by_exprs.append(item)
+                elif hasattr(item, 'to_polars') and callable(item.to_polars): # Check if item is an Expression
+                    polars_group_by_exprs.append(item.to_polars())
+                else:
+                    raise TypeError(f"Invalid type in group_by list: {type(item)}. Expected str or Expression.")
+
             aggregated_lf = lf.group_by(
-                self.group_by, maintain_order=True).agg(polars_aggs_to_apply)
+                polars_group_by_exprs, maintain_order=True).agg(polars_aggs_to_apply)
         else:
             aggregated_lf = lf.select(polars_aggs_to_apply)
 
