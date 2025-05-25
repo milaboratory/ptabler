@@ -5,7 +5,7 @@ import math # Added for math.ceil in expected value generation logic
 
 from ptabler.workflow import PWorkflow
 from ptabler.steps import GlobalSettings, AddColumns, Filter, TableSpace
-from ptabler.steps.add_columns import ColumnDefinition
+from software.src.ptabler.steps.basics import ColumnDefinition
 from ptabler.expression import (
     ColumnReferenceExpression, ConstantValueExpression,
     PlusExpression, EqExpression, GtExpression, AndExpression,

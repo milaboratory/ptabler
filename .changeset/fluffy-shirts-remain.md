@@ -3,4 +3,6 @@
 "@platforma-open/milaboratories.software-ptabler.schema": minor
 ---
 
-Rename
+- Module rename
+- Add Select and WithColumns steps
+
