@@ -166,3 +166,46 @@ class WithColumns(PStep, tag="with_columns"):
         updated_table_space[self.output_table] = lf_output
         
         return updated_table_space, []
+
+
+class WithoutColumns(PStep, tag="without_columns"):
+    """
+    PStep to exclude a specific set of columns from an input table and outputs
+    the result to a new table in the tablespace.
+    Corresponds to the WithoutColumnsStep defined in the TypeScript type definitions.
+    """
+    input_table: str = msgspec.field(name="inputTable")
+    output_table: str = msgspec.field(name="outputTable")
+    columns: List[str] # List of column names to exclude
+
+    def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
+        """
+        Executes the without_columns step.
+
+        Args:
+            table_space: The current tablespace containing named LazyFrames.
+            global_settings: Global settings for the workflow.
+
+        Returns:
+            A tuple containing the updated tablespace (with the new output_table)
+            and an empty list (as this is not a sink operation).
+        
+        Raises:
+            ValueError: If the specified input_table is not found in the tablespace.
+        """
+        if self.input_table not in table_space:
+            raise ValueError(
+                f"Input table '{self.input_table}' not found in tablespace. "
+                f"Available tables: {list(table_space.keys())}"
+            )
+
+        lf_input = table_space[self.input_table]
+
+        # Polars' exclude method takes a list of column names to remove.
+        # If self.columns is empty, it effectively does nothing, which is fine.
+        lf_output = lf_input.select(pl.all().exclude(self.columns))
+
+        updated_table_space = table_space.copy()
+        updated_table_space[self.output_table] = lf_output
+        
+        return updated_table_space, []
