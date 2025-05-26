@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler
 
+## 1.6.0
+
+### Minor Changes
+
+- d72aba5: WithoutColumns step
+
 ## 1.5.0
 
 ### Minor Changes
