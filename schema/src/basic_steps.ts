@@ -151,3 +151,32 @@ export interface WithColumnsStep {
     expression: Expression;
   }[];
 }
+
+/**
+ * Defines a step that excludes a specific set of columns from an input table
+ * and outputs the result to a new table in the tablespace. This operation is
+ * similar to Polars' `exclude` method.
+ */
+export interface WithoutColumnsStep {
+  /**
+   * The type identifier for this step.
+   * Must be 'without_columns'.
+   */
+  type: 'without_columns';
+
+  /**
+   * The name of the input table in the tablespace from which columns will be excluded.
+   */
+  inputTable: string;
+
+  /**
+   * The name for the resulting table that will be added to the tablespace.
+   * This new table will contain all columns from the inputTable except those specified.
+   */
+  outputTable: string;
+
+  /**
+   * An array of column names to be excluded from the input table.
+   */
+  columns: string[];
+}

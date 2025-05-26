@@ -1,5 +1,5 @@
 import type { ReadCsvStep, WriteCsvStep } from './io';
-import type { AddColumnsStep, FilterStep } from './basic_steps';
+import type { AddColumnsStep, FilterStep, SelectStep, WithColumnsStep, WithoutColumnsStep } from './basic_steps';
 import type { AggregateStep } from './aggregate';
 import type { AnyJoinStep } from './join';
 import type { ConcatenateStep } from './concatenate';
@@ -13,7 +13,10 @@ export type PTablerStep =
   | AggregateStep
   | AnyJoinStep
   | ConcatenateStep
-  | SortStep;
+  | SortStep
+  | SelectStep
+  | WithColumnsStep
+  | WithoutColumnsStep;
 
 export type PTablerWorkflow = {
   workflow: PTablerStep[];
