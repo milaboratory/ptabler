@@ -1,6 +1,6 @@
 import polars as pl
 import os
-from typing import List, Optional, Dict, Mapping, Any 
+from typing import List, Optional, Dict, Mapping, Any
 import msgspec
 
 from ptabler.common import toPolarsType, PType
@@ -8,11 +8,14 @@ from ptabler.common import toPolarsType, PType
 from .base import GlobalSettings, PStep, TableSpace
 from .util import normalize_path
 
+
 class ColumnSchema(msgspec.Struct, frozen=True, omit_defaults=True):
     """Defines the schema for a single column, mirroring the TS definition."""
     column: str
     type: Optional[PType] = None
-    null_value: Optional[str] = None # Specific string to be interpreted as null for this column
+    # Specific string to be interpreted as null for this column
+    null_value: Optional[str] = None
+
 
 class ReadCsv(PStep, tag="read_csv"):
     """
@@ -24,7 +27,8 @@ class ReadCsv(PStep, tag="read_csv"):
 
     delimiter: Optional[str] = None
     schema: Optional[List[ColumnSchema]] = None
-    infer_schema: bool = True # Added, defaults to True
+    infer_schema: bool = True  # Default for when header exists
+    noHeader: Optional[bool] = None  # New flag, True if CSV has no header row
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
@@ -35,33 +39,58 @@ class ReadCsv(PStep, tag="read_csv"):
 
         if self.delimiter is not None:
             scan_kwargs["separator"] = self.delimiter
-        
-        defined_column_types: Dict[str, pl.DataType] = {}
-        defined_null_values: Dict[str, str] = {}
 
+        defined_null_values: Dict[str, str] = {}
         if self.schema:
             for col_spec in self.schema:
-                if col_spec.type:
-                    polars_type_obj = toPolarsType(col_spec.type)
-                    defined_column_types[col_spec.column] = polars_type_obj
-                
                 if col_spec.null_value is not None:
                     defined_null_values[col_spec.column] = col_spec.null_value
 
-        scan_kwargs["infer_schema"] = self.infer_schema
-
-        if defined_column_types:
-            scan_kwargs["schema_overrides"] = defined_column_types
-        
         if defined_null_values:
             scan_kwargs["null_values"] = defined_null_values
-        
-        lazy_frame = pl.scan_csv(os.path.join(global_settings.root_folder, normalize_path(self.file)), **scan_kwargs)
-        
+
+        if self.noHeader:
+            scan_kwargs["has_header"] = False
+            scan_kwargs["infer_schema"] = False
+
+            if not self.schema:
+                raise ValueError(
+                    "A 'schema' (list of columns with names and types) must be provided when 'noHeader' is true.")
+
+            column_schema_dict: Dict[str, pl.DataType] = {}
+            for col_spec in self.schema:
+                col_type = toPolarsType(
+                    col_spec.type) if col_spec.type else pl.String
+                column_schema_dict[col_spec.column] = col_type
+
+            scan_kwargs["schema"] = column_schema_dict
+
+        else:
+            if self.schema:
+                schema_overrides_dict: Dict[str, pl.DataType] = {}
+                for col_spec in self.schema:
+                    if col_spec.type:
+                        schema_overrides_dict[col_spec.column] = toPolarsType(
+                            col_spec.type)
+                if schema_overrides_dict:
+                    scan_kwargs["schema_overrides"] = schema_overrides_dict
+
+            if self.infer_schema:
+                scan_kwargs["infer_schema"] = True
+            else:
+                scan_kwargs["infer_schema"] = False
+
+        lazy_frame = pl.scan_csv(
+            os.path.join(global_settings.root_folder,
+                         normalize_path(self.file)),
+            **scan_kwargs
+        )
+
         updated_table_space = table_space.copy()
         updated_table_space[self.name] = lazy_frame
-        
+
         return updated_table_space, []
+
 
 class BaseWriteLogic(PStep):
     """
@@ -100,12 +129,14 @@ class BaseWriteLogic(PStep):
         selected_lf = lf_to_write
         if self.columns:
             selected_lf = lf_to_write.select(self.columns)
-        
-        sink_plan = self._do_sink(selected_lf, os.path.join(global_settings.root_folder, normalize_path(self.file)))
+
+        sink_plan = self._do_sink(selected_lf, os.path.join(
+            global_settings.root_folder, normalize_path(self.file)))
 
         # The tablespace itself is not modified by a write operation.
         # We return the original tablespace and the plan that includes the sink operation.
         return table_space, [sink_plan]
+
 
 class WriteCsv(BaseWriteLogic, tag="write_csv"):
     """
@@ -116,8 +147,10 @@ class WriteCsv(BaseWriteLogic, tag="write_csv"):
     table: str  # Name of the table in the tablespace to write
     file: str   # Path to the output CSV file
 
-    columns: Optional[List[str]] = None  # Optional: List of column names to write
-    delimiter: Optional[str] = None      # Optional: The delimiter character for the output CSV
+    # Optional: List of column names to write
+    columns: Optional[List[str]] = None
+    # Optional: The delimiter character for the output CSV
+    delimiter: Optional[str] = None
 
     # execute method is inherited from BaseWriteLogic
 
@@ -128,15 +161,16 @@ class WriteCsv(BaseWriteLogic, tag="write_csv"):
         sink_kwargs: Dict[str, Any] = {}
         if self.delimiter is not None:
             sink_kwargs["separator"] = self.delimiter
-        
+
         # Polars' sink_csv method with lazy=True prepares a plan that includes writing the CSV.
         # It returns a DataFrame which, when collected, performs the write
         # and contains status information.
         return selected_lf.sink_csv(
             path=output_path,
-            lazy=True, # Ensures a plan is returned
+            lazy=True,  # Ensures a plan is returned
             **sink_kwargs
         )
+
 
 class WriteJson(BaseWriteLogic, tag="write_json"):
     """
@@ -147,7 +181,8 @@ class WriteJson(BaseWriteLogic, tag="write_json"):
     # Fields for msgspec
     table: str  # Name of the table in the tablespace to write
     file: str   # Path to the output JSON file
-    columns: Optional[List[str]] = None  # Optional: List of column names to write
+    # Optional: List of column names to write
+    columns: Optional[List[str]] = None
     # maintain_order: bool = True # Example: if we wanted to expose sink_ndjson's maintain_order
 
     # execute method is inherited from BaseWriteLogic
@@ -163,4 +198,4 @@ class WriteJson(BaseWriteLogic, tag="write_json"):
         return selected_lf.sink_ndjson(
             path=output_path
             # maintain_order=self.maintain_order # If maintain_order field was added
-            )
+        )
