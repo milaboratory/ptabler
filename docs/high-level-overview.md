@@ -46,6 +46,7 @@ Each object in the `workflow` array represents a single operation (a "step"). Ev
   * `schema` (optional): Explicit schema definition for the CSV.
   * `columns` (optional): List of column names to read; reads all if omitted.
   * `null_values` (optional): A string representing nulls, or a dictionary mapping column names to specific null strings for those columns.
+  * `noHeader` (optional): Boolean. If `true`, the CSV is treated as having no header row. Data reading starts from the first line. A `schema` must be provided, and its order dictates column names and sequence. `infer_schema` is automatically `false`.
 * **`write_csv`**: Writes a table from the tablespace to a CSV file.
   * `table`: Name of the table in the tablespace to write.
   * `file`: Path to the output CSV file.

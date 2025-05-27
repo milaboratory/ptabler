@@ -24,11 +24,16 @@ export interface ReadCsvStep {
   delimiter?: string;
   /**
    * Optional: Provides schema information for specific columns.
-   * If `infer_schema` is `true` (default), these definitions act as overrides
-   * to the types inferred by Polars. Each `ColumnSchema` can specify a `type`
-   * and/or a `nullValue`. If `infer_schema` is `false`, these definitions are
-   * used directly; for columns not listed, Polars' default behavior when no
-   * type is specified (e.g., reading as string) will apply.
+   * If `noHeader` is true, this field is **required**, and the order of `ColumnSchema`
+   * definitions determines the column order in the resulting DataFrame. `infer_schema`
+   * is implicitly false in this case.
+   * If `noHeader` is false (or not provided):
+   *   - If `infer_schema` is `true` (default), these definitions act as overrides
+   *     to the types inferred by Polars. Each `ColumnSchema` can specify a `type`
+   *     and/or a `nullValue`.
+   *   - If `infer_schema` is `false`, these definitions are used directly; for columns
+   *     not listed, Polars' default behavior when no type is specified (e.g., reading
+   *     as string) will apply.
    */
   schema?: ColumnSchema[];
   /**
@@ -37,8 +42,19 @@ export interface ReadCsvStep {
    * Defaults to `true`. If set to `false`, type inference is disabled,
    * and types will rely on the `schema` field or Polars' defaults for
    * columns not specified in `schema`.
+   * If `noHeader` is `true`, this field is implicitly `false` and any provided value is ignored.
    */
   infer_schema?: boolean;
+  /**
+   * Optional: Indicates that the CSV file does not have a header row.
+   * If `true`:
+   *   - The data is read starting from the very first line.
+   *   - A `schema` must be provided, and the order of columns in the `schema` array
+   *     defines the column names and their order in the DataFrame.
+   *   - `infer_schema` is implicitly `false`, regardless of its provided value.
+   * Defaults to `false`.
+   */
+  noHeader?: boolean;
 }
 
 /**

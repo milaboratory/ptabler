@@ -17,6 +17,7 @@ class BasicTest(unittest.TestCase):
         output_file_relative_path = "output_simple_test.csv"
 
         output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+        os.makedirs(os.path.dirname(output_file_abs_path), exist_ok=True)
 
         read_step = ReadCsv(
             file=input_file_relative_path,
