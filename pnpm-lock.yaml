@@ -10,8 +10,8 @@ catalogs:
       specifier: ^2.29.4
       version: 2.29.4
     '@platforma-open/milaboratories.runenv-python-3':
-      specifier: ^1.1.14
-      version: 1.1.14
+      specifier: 1.1.15
+      version: 1.1.15
     '@platforma-sdk/eslint-config':
       specifier: ^1.0.3
       version: 1.0.3
@@ -70,7 +70,7 @@ importers:
     devDependencies:
       '@platforma-open/milaboratories.runenv-python-3':
         specifier: 'catalog:'
-        version: 1.1.14
+        version: 1.1.15
       '@platforma-sdk/package-builder':
         specifier: 'catalog:'
         version: 2.16.0
@@ -570,8 +570,8 @@ packages:
     resolution: {integrity: sha512-lIzHY+JMP6evrS5E/sGijNnwrCoNtGy8703jWXcMuPOYKiFhWoAqnIm1BGgoRgmxczkbSfRsHUL/lwsSgh74Lw==}
     engines: {node: '>=18.0.0'}
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.14':
-    resolution: {integrity: sha512-W05sFGFh+k+x+tLibJFbd4AFHE1fsXeFCBJWvGCbG5P/VWdpZBT5DZnAna3FRr83a5t+w6Or2dZ6uxd/5+Fcng==}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.15':
+    resolution: {integrity: sha512-sNXvKvJhaXJQaP/FC8BqTCQMM6j/hzbymK0lMMmYAU9bitLdCrIOADcUy3nXxINRKHSsln/LgKgAihohAr01/g==}
 
   '@platforma-sdk/eslint-config@1.0.3':
     resolution: {integrity: sha512-ypgWCnlTALlSkeUlYUh+9VexSPVECAHYMOAvbyidf7cmHAVUvPzuAB2J9MeM0HvgAnJpC3ZvUGAsNq2rQFX8uw==}
@@ -3065,7 +3065,7 @@ snapshots:
       wordwrap: 1.0.0
       wrap-ansi: 7.0.0
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.14': {}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.15': {}
 
   '@platforma-sdk/eslint-config@1.0.3(@eslint/js@9.27.0)(@stylistic/eslint-plugin@2.13.0(eslint@9.27.0)(typescript@5.5.4))(eslint-plugin-n@17.15.1(eslint@9.27.0))(eslint-plugin-vue@9.32.0(eslint@9.27.0))(eslint@9.27.0)(globals@15.14.0)(typescript-eslint@8.23.0(eslint@9.27.0)(typescript@5.5.4))(typescript@5.5.4)':
     dependencies:
