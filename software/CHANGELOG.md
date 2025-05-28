@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler
 
+## 1.6.1
+
+### Patch Changes
+
+- 6561d34: Dependency and environment upgrade
+
 ## 1.6.0
 
 ### Minor Changes
