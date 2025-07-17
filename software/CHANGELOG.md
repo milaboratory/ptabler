@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler
 
+## 1.7.0
+
+### Minor Changes
+
+- 0f7c0ae: Substring opertation now accepts expressions as it's start, ent and length arguments.
+
 ## 1.6.1
 
 ### Patch Changes
