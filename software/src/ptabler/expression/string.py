@@ -66,12 +66,12 @@ class SubstringExpression(Expression, tag='substring'):
     """
     value: 'AnyExpression'
     """The expression whose string value will be used."""
-    start: int
-    """The starting position (0-indexed)."""
-    length: typing.Optional[int] = None
-    """The length of the substring. Mutually exclusive with 'end'."""
-    end: typing.Optional[int] = None
-    """The end position of the substring (exclusive). Mutually exclusive with 'length'."""
+    start: 'AnyExpression'
+    """The starting position (0-indexed). Should evaluate to a number."""
+    length: typing.Optional['AnyExpression'] = None
+    """The length of the substring. Mutually exclusive with 'end'. Should evaluate to a number."""
+    end: typing.Optional['AnyExpression'] = None
+    """The end position of the substring (exclusive). Mutually exclusive with 'length'. Should evaluate to a number."""
 
     def to_polars(self) -> pl.Expr:
         """Converts the expression to a Polars str.slice expression."""
@@ -79,21 +79,19 @@ class SubstringExpression(Expression, tag='substring'):
             raise ValueError(
                 "SubstringExpression cannot have both 'length' and 'end' defined.")
 
-        slice_length: typing.Optional[int] = None
-        if self.length is not None:
-            if self.length < 0:
-                raise ValueError(
-                    "SubstringExpression 'length' cannot be negative.")
-            slice_length = self.length
-        elif self.end is not None:
-            if self.end < self.start:
-                raise ValueError(
-                    f"SubstringExpression 'end' ({self.end}) cannot be less than 'start' ({self.start}).")
-            slice_length = self.end - self.start
-
         polars_value = self.value.to_polars()
-
-        return polars_value.str.slice(offset=self.start, length=slice_length)
+        polars_start = self.start.to_polars()
+        
+        if self.length is not None:
+            polars_length = self.length.to_polars()
+            return polars_value.str.slice(offset=polars_start, length=polars_length)
+        elif self.end is not None:
+            polars_end = self.end.to_polars()
+            polars_length = polars_end - polars_start
+            return polars_value.str.slice(offset=polars_start, length=polars_length)
+        else:
+            # If neither length nor end is provided, slice to end of string
+            return polars_value.str.slice(offset=polars_start)
 
 
 class StringReplaceExpression(Expression, tag='str_replace'):

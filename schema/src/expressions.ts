@@ -321,12 +321,12 @@ export interface SubstringExpression {
   type: 'substring';
   /** The expression whose string value will be used. */
   value: Expression;
-  /** The starting position (0-indexed). */
-  start: number;
-  /** The length of the substring. Mutually exclusive with 'end'. */
-  length?: number;
-  /** The end position of the substring (exclusive). Mutually exclusive with 'length'. */
-  end?: number;
+  /** The starting position (0-indexed). Should evaluate to a number. */
+  start: Expression;
+  /** The length of the substring. Mutually exclusive with 'end'. Should evaluate to a number. */
+  length?: Expression;
+  /** The end position of the substring (exclusive). Mutually exclusive with 'length'. Should evaluate to a number. */
+  end?: Expression;
 }
 
 /**

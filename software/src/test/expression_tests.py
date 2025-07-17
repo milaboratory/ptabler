@@ -342,11 +342,12 @@ class StepTests(unittest.TestCase):
                 ColumnDefinition(
                     name="s1s2_hash",
                     expression=SubstringExpression(
-                        ToUpperExpression(HashExpression("sha256", "base64", StringJoinExpression([
+                        value=ToUpperExpression(HashExpression("sha256", "base64", StringJoinExpression([
                             ColumnReferenceExpression("s1"),
                             ColumnReferenceExpression("s2")
                         ], "_"))),
-                        start=0, length=10
+                        start=ConstantValueExpression(value=0), 
+                        length=ConstantValueExpression(value=10)
                     ),
                 )
             ]
