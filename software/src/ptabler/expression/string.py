@@ -51,7 +51,7 @@ class StrLenExpression(Expression, tag='str_len'):
         return self.value.to_polars().str.len_chars()
 
 
-class SubstringExpression(Expression, tag='substring'):
+class SubstringExpression(Expression, tag="substring"):
     """
     Represents a substring extraction operation on an expression.
     Corresponds to the SubstringExpression in TypeScript definitions.
@@ -63,40 +63,48 @@ class SubstringExpression(Expression, tag='substring'):
     - 'length' and 'end' are mutually exclusive.
     If the requested substring range extends beyond the actual string length,
     the extraction automatically stops at the end of the string (Polars default behavior).
+    'start', 'length', and 'end' can be either literal integers or expression objects.
     """
-    value: 'AnyExpression'
+
+    value: "AnyExpression"
     """The expression whose string value will be used."""
-    start: int
-    """The starting position (0-indexed)."""
-    length: typing.Optional[int] = None
+    start: typing.Union[int, "AnyExpression"]
+    """The starting position (0-indexed), as a literal or an expression."""
+    length: typing.Optional[typing.Union[int, "AnyExpression"]] = None
     """The length of the substring. Mutually exclusive with 'end'."""
-    end: typing.Optional[int] = None
+    end: typing.Optional[typing.Union[int, "AnyExpression"]] = None
     """The end position of the substring (exclusive). Mutually exclusive with 'length'."""
 
     def to_polars(self) -> pl.Expr:
         """Converts the expression to a Polars str.slice expression."""
         if self.length is not None and self.end is not None:
-            raise ValueError(
-                "SubstringExpression cannot have both 'length' and 'end' defined.")
-
-        slice_length: typing.Optional[int] = None
-        if self.length is not None:
-            if self.length < 0:
-                raise ValueError(
-                    "SubstringExpression 'length' cannot be negative.")
-            slice_length = self.length
-        elif self.end is not None:
-            if self.end < self.start:
-                raise ValueError(
-                    f"SubstringExpression 'end' ({self.end}) cannot be less than 'start' ({self.start}).")
-            slice_length = self.end - self.start
+            raise ValueError("SubstringExpression cannot have both 'length' and 'end' defined.")
 
         polars_value = self.value.to_polars()
 
-        return polars_value.str.slice(offset=self.start, length=slice_length)
+        def to_polars_expr(val):
+            if isinstance(val, Expression):
+                return val.to_polars()
+            elif isinstance(val, int):
+                return pl.lit(val)
+            else:
+                raise TypeError(f"Unsupported type for substring parameter: {type(val)}")
+
+        polars_start = to_polars_expr(self.start)
+
+        slice_length: typing.Optional[pl.Expr] = None
+        if self.length is not None:
+            if isinstance(self.length, int) and self.length < 0:
+                raise ValueError("SubstringExpression 'length' cannot be negative.")
+            slice_length = to_polars_expr(self.length)
+        elif self.end is not None:
+            polars_end = to_polars_expr(self.end)
+            slice_length = polars_end - polars_start
+
+        return polars_value.str.slice(offset=polars_start, length=slice_length)
 
 
-class StringReplaceExpression(Expression, tag='str_replace'):
+class StringReplaceExpression(Expression, tag="str_replace"):
     """
     Represents a string replacement operation.
     Corresponds to the StringReplaceExpression in TypeScript definitions.
