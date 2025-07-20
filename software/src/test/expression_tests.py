@@ -15,6 +15,8 @@ from ptabler.expression import (
     WhenThenClause, WhenThenOtherwiseExpression,
     HashExpression,
     StringReplaceExpression,
+    StringContainsExpression, StringContainsAnyExpression, StringCountMatchesExpression,
+    StringExtractExpression, StringStartsWithExpression, StringEndsWithExpression,
     FillNaExpression,
     UnaryMinusExpression,
 )
@@ -843,6 +845,371 @@ class StepTests(unittest.TestCase):
 
         result_df = final_table_space["input_table"].collect()
         # Ensure column order for comparison
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_contains_expression_literal(self):
+        """
+        Tests AddColumns step with StringContainsExpression using literal matching.
+        Checks if strings contain the literal pattern.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["hello world", "HELLO world", "goodbye", "world hello"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        contains_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="contains_hello_literal",
+                    expression=StringContainsExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        pattern="hello",  # Using string directly instead of ConstantValueExpression
+                        literal=True
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[contains_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["hello world", "HELLO world", "goodbye", "world hello"],
+            "contains_hello_literal": [True, False, False, True]  # Case sensitive literal
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_contains_expression_regex(self):
+        """
+        Tests AddColumns step with StringContainsExpression using regex matching.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["hello123", "HELLO456", "goodbye", "test789"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        contains_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="contains_hello_digits",
+                    expression=StringContainsExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        pattern=ConstantValueExpression(value=r"(?i)hello\d+"),  # Case insensitive + digits
+                        literal=False
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[contains_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["hello123", "HELLO456", "goodbye", "test789"],
+            "contains_hello_digits": [True, True, False, False]
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_contains_any_expression(self):
+        """
+        Tests AddColumns step with StringContainsAnyExpression.
+        Checks if strings contain any of the provided patterns.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "text": ["apple pie", "banana split", "orange juice", "grape soda", "watermelon"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        contains_any_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="contains_citrus",
+                    expression=StringContainsAnyExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        patterns=["orange", "lemon", "lime", "grapefruit"]
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[contains_any_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "text": ["apple pie", "banana split", "orange juice", "grape soda", "watermelon"],
+            "contains_citrus": [False, False, True, False, False]  # Only "orange juice" matches
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_count_matches_expression(self):
+        """
+        Tests AddColumns step with StringCountMatchesExpression.
+        Counts how many times a pattern occurs in each string.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["ababab", "abcabc", "xyz", "aaa"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        count_matches_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="count_ab_literal",
+                    expression=StringCountMatchesExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        pattern="ab",  # Using string directly
+                        literal=True
+                    )
+                ),
+                ColumnDefinition(
+                    name="count_a_regex",
+                    expression=StringCountMatchesExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        pattern=ConstantValueExpression(value="a+"),  # One or more 'a'
+                        literal=False
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[count_matches_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["ababab", "abcabc", "xyz", "aaa"],
+            "count_ab_literal": [3, 2, 0, 0],  # "ababab" has 3 overlapping "ab", "abcabc" has 2
+            "count_a_regex": [3, 2, 0, 1]     # "ababab" has 3 'a', "abcabc" has 2, "aaa" has 1 match of "a+"
+        }, schema_overrides={"count_ab_literal": pl.UInt32, "count_a_regex": pl.UInt32})
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_extract_expression(self):
+        """
+        Tests AddColumns step with StringExtractExpression.
+        Extracts parts of strings using regex patterns and capture groups.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "email": ["john.doe@example.com", "jane_smith@test.org", "invalid-email", "bob@company.co.uk"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        extract_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="username",
+                    expression=StringExtractExpression(
+                        value=ColumnReferenceExpression(name="email"),
+                        pattern=ConstantValueExpression(value=r"^([^@]+)@.*"),
+                        group_index=1  # Extract the first capture group (username part)
+                    )
+                ),
+                ColumnDefinition(
+                    name="domain",
+                    expression=StringExtractExpression(
+                        value=ColumnReferenceExpression(name="email"),
+                        pattern=ConstantValueExpression(value=r"^[^@]+@(.+)"),
+                        group_index=1  # Extract the domain part
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[extract_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "email": ["john.doe@example.com", "jane_smith@test.org", "invalid-email", "bob@company.co.uk"],
+            "username": ["john.doe", "jane_smith", None, "bob"],  # None for invalid email
+            "domain": ["example.com", "test.org", None, "company.co.uk"]
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_starts_with_expression(self):
+        """
+        Tests AddColumns step with StringStartsWithExpression.
+        Checks if strings start with specific prefixes.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "filename": ["document.pdf", "image.jpg", "data.csv", "Document.PDF", "script.py"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        starts_with_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="starts_with_doc",
+                    expression=StringStartsWithExpression(
+                        value=ColumnReferenceExpression(name="filename"),
+                        prefix="document"  # Using string directly
+                    )
+                ),
+                ColumnDefinition(
+                    name="starts_with_data",
+                    expression=StringStartsWithExpression(
+                        value=ColumnReferenceExpression(name="filename"),
+                        prefix="data"  # Using string directly
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[starts_with_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "filename": ["document.pdf", "image.jpg", "data.csv", "Document.PDF", "script.py"],
+            "starts_with_doc": [True, False, False, False, False],  # Case sensitive
+            "starts_with_data": [False, False, True, False, False]
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_ends_with_expression(self):
+        """
+        Tests AddColumns step with StringEndsWithExpression.
+        Checks if strings end with specific suffixes.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "filename": ["document.pdf", "image.jpg", "data.csv", "archive.ZIP", "readme.txt"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        ends_with_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="is_pdf",
+                    expression=StringEndsWithExpression(
+                        value=ColumnReferenceExpression(name="filename"),
+                        suffix=".pdf"  # Using string directly
+                    )
+                ),
+                ColumnDefinition(
+                    name="is_image",
+                    expression=StringEndsWithExpression(
+                        value=ColumnReferenceExpression(name="filename"),
+                        suffix=".jpg"  # Using string directly
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[ends_with_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4, 5],
+            "filename": ["document.pdf", "image.jpg", "data.csv", "archive.ZIP", "readme.txt"],
+            "is_pdf": [True, False, False, False, False],  # Case sensitive
+            "is_image": [False, True, False, False, False]
+        })
+
+        result_df = final_table_space["test_data"].collect()
+        result_df = result_df.select(expected_df.columns)
+        assert_frame_equal(result_df, expected_df, check_dtypes=True)
+
+    def test_string_contains_any_case_insensitive(self):
+        """
+        Tests StringContainsAnyExpression with ascii_case_insensitive=True.
+        """
+        initial_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["Apple", "BANANA", "orange", "GRAPE"]
+        }).lazy()
+        initial_table_space: TableSpace = {"test_data": initial_df}
+
+        contains_any_step = AddColumns(
+            table="test_data",
+            columns=[
+                ColumnDefinition(
+                    name="contains_fruit_ci",
+                    expression=StringContainsAnyExpression(
+                        value=ColumnReferenceExpression(name="text"),
+                        patterns=["apple", "banana"],
+                        ascii_case_insensitive=True
+                    )
+                )
+            ]
+        )
+
+        workflow = PWorkflow(workflow=[contains_any_step])
+        final_table_space, _ = workflow.execute(
+            global_settings=global_settings,
+            lazy=True,
+            initial_table_space=initial_table_space
+        )
+
+        expected_df = pl.DataFrame({
+            "id": [1, 2, 3, 4],
+            "text": ["Apple", "BANANA", "orange", "GRAPE"],
+            "contains_fruit_ci": [True, True, False, False]  # Case insensitive matching
+        })
+
+        result_df = final_table_space["test_data"].collect()
         result_df = result_df.select(expected_df.columns)
         assert_frame_equal(result_df, expected_df, check_dtypes=True)
 

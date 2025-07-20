@@ -20,6 +20,12 @@ export type Expression =
   | WhenThenOtherwiseExpression
   | SubstringExpression
   | StringReplaceExpression
+  | StringContainsExpression
+  | StringStartsWithExpression
+  | StringEndsWithExpression
+  | StringContainsAnyExpression
+  | StringCountMatchesExpression
+  | StringExtractExpression
   | MinMaxExpression
   | FillNaExpression
   | WindowExpression;
@@ -355,6 +361,100 @@ export interface StringReplaceExpression {
   replaceAll?: boolean;
   /** If true, treat the pattern as a literal string. If false or undefined, treat it as a regex. Defaults to false. */
   literal?: boolean;
+}
+
+/**
+ * Represents a string contains operation.
+ * Checks if the string contains a substring that matches a pattern using regex or literal matching.
+ * Based on polars.Series.str.contains - supports both regex and literal pattern matching with optional case-insensitive flags.
+ */
+export interface StringContainsExpression {
+  /** The type of operation, always 'str_contains'. */
+  type: 'str_contains';
+  /** The input string expression to search in. */
+  value: Expression;
+  /** The pattern to search for. Can be a regex pattern (default) or literal string when literal=true. */
+  pattern: Expression | string;
+  /** If true, treat the pattern as a literal string. If false, treat it as a regex pattern. Defaults to false. */
+  literal?: boolean;
+  /** If true, raise an error if pattern is invalid regex. If false, return null for invalid patterns. Defaults to true. */
+  strict?: boolean;
+}
+
+/**
+ * Represents a string starts_with operation.
+ * Checks if the string starts with a specified prefix. Always uses literal matching (no regex support).
+ * Based on polars.Series.str.starts_with - only supports literal prefix matching.
+ */
+export interface StringStartsWithExpression {
+  /** The type of operation, always 'str_starts_with'. */
+  type: 'str_starts_with';
+  /** The input string expression to check. */
+  value: Expression;
+  /** The prefix to check for (always treated as literal string, no regex support). */
+  prefix: Expression | string;
+}
+
+/**
+ * Represents a string ends_with operation.
+ * Checks if the string ends with a specified suffix. Always uses literal matching (no regex support).
+ * Based on polars.Series.str.ends_with - only supports literal suffix matching.
+ */
+export interface StringEndsWithExpression {
+  /** The type of operation, always 'str_ends_with'. */
+  type: 'str_ends_with';
+  /** The input string expression to check. */
+  value: Expression;
+  /** The suffix to check for (always treated as literal string, no regex support). */
+  suffix: Expression | string;
+}
+
+/**
+ * Represents a string contains_any operation using the Aho-Corasick algorithm.
+ * Checks if the string contains any of the provided patterns using fast multi-pattern string matching.
+ * Based on polars.Series.str.contains_any - uses Aho-Corasick algorithm for efficient multi-pattern matching.
+ */
+export interface StringContainsAnyExpression {
+  /** The type of operation, always 'str_contains_any'. */
+  type: 'str_contains_any';
+  /** The input string expression to search in. */
+  value: Expression;
+  /** Array of literal string patterns to search for. Only immediate string values are supported, no expressions or regex patterns. */
+  patterns: string[];
+  /** Enable ASCII-aware case insensitive matching. When enabled, searching is performed without respect to case for ASCII letters (a-z and A-Z) only. Defaults to false. */
+  asciiCaseInsensitive?: boolean;
+}
+
+/**
+ * Represents a string count_matches operation.
+ * Counts the number of times a pattern occurs in the string using regex or literal matching.
+ * Based on polars.Series.str.count_matches - supports both regex and literal pattern matching.
+ */
+export interface StringCountMatchesExpression {
+  /** The type of operation, always 'str_count_matches'. */
+  type: 'str_count_matches';
+  /** The input string expression to count matches in. */
+  value: Expression;
+  /** The pattern to count occurrences of. Can be a regex pattern (default) or literal string when literal=true. */
+  pattern: Expression | string;
+  /** If true, treat the pattern as a literal string. If false, treat it as a regex pattern. Defaults to false. */
+  literal?: boolean;
+}
+
+/**
+ * Represents a string extract operation using regex patterns.
+ * Extracts the first match of a regex pattern from the string, optionally targeting specific capture groups.
+ * Based on polars.Series.str.extract - only supports regex patterns (no literal mode).
+ */
+export interface StringExtractExpression {
+  /** The type of operation, always 'str_extract'. */
+  type: 'str_extract';
+  /** The input string expression to extract from. */
+  value: Expression;
+  /** The regex pattern to extract. Must be a valid regex pattern - no literal string mode is supported. */
+  pattern: Expression | string;
+  /** The capture group index to extract. Group 0 is the entire match, group 1 is the first capture group, etc. Defaults to 0. */
+  groupIndex?: number;
 }
 
 /** Defines the supported min/max operators. */

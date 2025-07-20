@@ -142,3 +142,167 @@ class StringReplaceExpression(Expression, tag='str_replace'):
                 literal=use_literal,
                 n=1
             )
+
+
+class StringContainsExpression(Expression, tag='str_contains'):
+    """
+    Represents a string contains operation using regex or literal matching.
+    Checks if the string contains the specified pattern anywhere within it.
+    Based on polars.Series.str.contains - supports both regex and literal pattern matching.
+    """
+    value: 'AnyExpression'
+    """The input string expression to search in."""
+    pattern: typing.Union['AnyExpression', str]
+    """The pattern to search for. Can be a regex pattern (default) or literal string when literal=True."""
+    literal: typing.Optional[bool] = False
+    """If true, treat the pattern as a literal string. If false, treat it as a regex pattern. Defaults to false."""
+    strict: typing.Optional[bool] = True
+    """If true, raise an error if pattern is invalid regex. If false, return null for invalid patterns. Defaults to true."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.contains expression."""
+        polars_value = self.value.to_polars()
+        
+        if isinstance(self.pattern, Expression):
+            polars_pattern = self.pattern.to_polars()
+        else:
+            polars_pattern = self.pattern
+            
+        use_literal = self.literal or False
+        use_strict = self.strict if self.strict is not None else True
+        
+        return polars_value.str.contains(
+            pattern=polars_pattern,
+            literal=use_literal,
+            strict=use_strict
+        )
+
+
+class StringContainsAnyExpression(Expression, tag='str_contains_any'):
+    """
+    Represents a string contains_any operation for multiple literal patterns.
+    Returns true if the string contains ANY of the provided patterns using the Aho-Corasick algorithm.
+    Based on polars.Series.str.contains_any - only supports literal string patterns, no regex.
+    """
+    value: 'AnyExpression'
+    """The input string expression to search in."""
+    patterns: list[str]
+    """Array of literal string patterns to search for. Only supports immediate string values, not expressions."""
+    ascii_case_insensitive: typing.Optional[bool] = False
+    """Enable ASCII case insensitive matching. When this option is enabled, characters in the range A-Z will be treated as equivalent to a-z."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.contains_any expression."""
+        polars_value = self.value.to_polars()
+        use_ascii_case_insensitive = self.ascii_case_insensitive or False
+        
+        return polars_value.str.contains_any(
+            patterns=self.patterns,
+            ascii_case_insensitive=use_ascii_case_insensitive
+        )
+
+
+class StringCountMatchesExpression(Expression, tag='str_count_matches'):
+    """
+    Represents a string count_matches operation.
+    Counts the number of times a pattern occurs in the string using regex or literal matching.
+    Based on polars.Series.str.count_matches - supports both regex and literal pattern matching.
+    """
+    value: 'AnyExpression'
+    """The input string expression to count matches in."""
+    pattern: typing.Union['AnyExpression', str]
+    """The pattern to count occurrences of. Can be a regex pattern (default) or literal string when literal=true."""
+    literal: typing.Optional[bool] = False
+    """If true, treat the pattern as a literal string. If false, treat it as a regex pattern. Defaults to false."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.count_matches expression."""
+        polars_value = self.value.to_polars()
+        
+        if isinstance(self.pattern, Expression):
+            polars_pattern = self.pattern.to_polars()
+        else:
+            polars_pattern = self.pattern
+            
+        use_literal = self.literal or False
+        
+        return polars_value.str.count_matches(
+            pattern=polars_pattern,
+            literal=use_literal
+        )
+
+
+class StringExtractExpression(Expression, tag='str_extract'):
+    """
+    Represents a string extract operation using regex patterns.
+    Extracts the first match of a regex pattern from the string, optionally targeting specific capture groups.
+    Based on polars.Series.str.extract - only supports regex patterns (no literal mode).
+    """
+    value: 'AnyExpression'
+    """The input string expression to extract from."""
+    pattern: typing.Union['AnyExpression', str]
+    """The regex pattern to extract. Must be a valid regex pattern - no literal string mode is supported."""
+    group_index: typing.Optional[int] = 0
+    """The capture group index to extract. Group 0 is the entire match, group 1 is the first capture group, etc. Defaults to 0."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.extract expression."""
+        polars_value = self.value.to_polars()
+        
+        if isinstance(self.pattern, Expression):
+            polars_pattern = self.pattern.to_polars()
+        else:
+            polars_pattern = self.pattern
+            
+        use_group_index = self.group_index if self.group_index is not None else 0
+        
+        return polars_value.str.extract(
+            pattern=polars_pattern,
+            group_index=use_group_index
+        )
+
+
+class StringStartsWithExpression(Expression, tag='str_starts_with'):
+    """
+    Represents a string starts_with operation for literal prefix matching.
+    Checks if the string starts with the specified literal prefix.
+    Based on polars.Series.str.starts_with - only supports literal string matching, no regex.
+    """
+    value: 'AnyExpression'
+    """The input string expression to check."""
+    prefix: typing.Union['AnyExpression', str]
+    """The literal string prefix to check for at the start of the string."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.starts_with expression."""
+        polars_value = self.value.to_polars()
+        
+        if isinstance(self.prefix, Expression):
+            polars_prefix = self.prefix.to_polars()
+        else:
+            polars_prefix = self.prefix
+        
+        return polars_value.str.starts_with(prefix=polars_prefix)
+
+
+class StringEndsWithExpression(Expression, tag='str_ends_with'):
+    """
+    Represents a string ends_with operation for literal suffix matching.
+    Checks if the string ends with the specified literal suffix.
+    Based on polars.Series.str.ends_with - only supports literal string matching, no regex.
+    """
+    value: 'AnyExpression'
+    """The input string expression to check."""
+    suffix: typing.Union['AnyExpression', str]
+    """The literal string suffix to check for at the end of the string."""
+
+    def to_polars(self) -> pl.Expr:
+        """Converts the expression to a Polars str.ends_with expression."""
+        polars_value = self.value.to_polars()
+        
+        if isinstance(self.suffix, Expression):
+            polars_suffix = self.suffix.to_polars()
+        else:
+            polars_suffix = self.suffix
+        
+        return polars_value.str.ends_with(suffix=polars_suffix)
