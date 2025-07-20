@@ -1,5 +1,17 @@
 # @platforma-open/software-ptabler
 
+## 1.8.0
+
+### Minor Changes
+
+- bd12a90: Additional string functions:
+  - `contains` - Check if string contains a pattern (regex or literal)
+  - `containsAny` - Check if string contains any of multiple patterns (Aho-Corasick algorithm)
+  - `countMatches` - Count occurrences of a pattern in string (regex or literal)
+  - `extract` - Extract parts of string using regex patterns and capture groups
+  - `startsWith` - Check if string starts with a literal prefix
+  - `endsWith` - Check if string ends with a literal suffix
+
 ## 1.7.0
 
 ### Minor Changes
