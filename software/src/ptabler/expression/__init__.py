@@ -18,7 +18,8 @@ from .basics import (
 )
 from .string import (
     StringJoinExpression, ToUpperExpression, ToLowerExpression, StrLenExpression, SubstringExpression,
-    StringReplaceExpression,
+    StringReplaceExpression, StringContainsExpression, StringContainsAnyExpression, StringCountMatchesExpression,
+    StringExtractExpression, StringStartsWithExpression, StringEndsWithExpression,
 )
 from .fuzzy import (
     StringDistanceExpression, FuzzyStringFilterExpression,
@@ -79,6 +80,12 @@ AnyExpression = typing.Union[
     StrLenExpression,
     SubstringExpression,
     StringReplaceExpression,
+    StringContainsExpression,
+    StringContainsAnyExpression,
+    StringCountMatchesExpression,
+    StringExtractExpression,
+    StringStartsWithExpression,
+    StringEndsWithExpression,
     # Fuzzy String Operations
     StringDistanceExpression,
     FuzzyStringFilterExpression,
@@ -143,6 +150,12 @@ __all__ = [
     "StrLenExpression",
     "SubstringExpression",
     "StringReplaceExpression",
+    "StringContainsExpression",
+    "StringContainsAnyExpression",
+    "StringCountMatchesExpression",
+    "StringExtractExpression",
+    "StringStartsWithExpression",
+    "StringEndsWithExpression",
     "StringDistanceExpression",
     "FuzzyStringFilterExpression",
     "WhenThenClause",
