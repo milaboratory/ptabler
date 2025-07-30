@@ -1,5 +1,11 @@
 # @platforma-open/software-ptabler
 
+## 1.9.0
+
+### Minor Changes
+
+- 97c6e69: Add NDJSON file format support for reading and writing data. Includes ReadNdjsonStep and WriteNdjsonStep with support for schema overrides, error handling, and row limiting. Enhanced CSV reader with nRows parameter support. Added BaseReadLogic abstraction for common file reading patterns.
+
 ## 1.8.0
 
 ### Minor Changes
