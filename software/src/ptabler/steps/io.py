@@ -14,28 +14,35 @@ class ColumnSchema(msgspec.Struct, frozen=True, omit_defaults=True):
     type: Optional[PType] = None
     null_value: Optional[str] = None # Specific string to be interpreted as null for this column
 
-class ReadCsv(PStep, tag="read_csv"):
+class BaseReadLogic(PStep):
     """
-    PStep to read data from a CSV file into the tablespace.
-    Corresponds to the ReadCsvStep in the TypeScript definitions.
+    Abstract base class for PSteps that read files into the tablespace.
+    It handles common logic like schema processing, null values, and table space updates.
+    Concrete subclasses must implement the _do_scan method.
     """
-    file: str  # Path to the CSV file
-    name: str  # Name to assign to the loaded DataFrame in the tablespace
+    # These attributes are expected to be defined by subclasses that are msgspec.Structs
+    # and PStep compliant.
+    file: str
+    name: str
+    schema: Optional[List[ColumnSchema]]
+    infer_schema: Optional[bool]
+    ignore_errors: Optional[bool]
+    n_rows: Optional[int]
 
-    delimiter: Optional[str] = None
-    schema: Optional[List[ColumnSchema]] = None
-    infer_schema: bool = True # Added, defaults to True
+    def _do_scan(self, file_path: str, scan_kwargs: Dict[str, Any]) -> pl.LazyFrame:
+        """
+        Performs the specific scan operation for the derived class.
+        This method should return a Polars LazyFrame from the file.
+        """
+        pass
 
     def execute(self, table_space: TableSpace, global_settings: GlobalSettings) -> tuple[TableSpace, list[pl.LazyFrame]]:
         """
-        Reads the CSV file according to the step's parameters and adds the
-        resulting LazyFrame to the tablespace.
+        Common execution logic for reading steps.
+        Processes schema, builds scan kwargs, calls _do_scan, and updates table space.
         """
         scan_kwargs: Dict[str, Any] = {}
 
-        if self.delimiter is not None:
-            scan_kwargs["separator"] = self.delimiter
-        
         defined_column_types: Dict[str, pl.DataType] = {}
         defined_null_values: Dict[str, str] = {}
 
@@ -48,20 +55,70 @@ class ReadCsv(PStep, tag="read_csv"):
                 if col_spec.null_value is not None:
                     defined_null_values[col_spec.column] = col_spec.null_value
 
-        scan_kwargs["infer_schema"] = self.infer_schema
-
         if defined_column_types:
             scan_kwargs["schema_overrides"] = defined_column_types
         
         if defined_null_values:
             scan_kwargs["null_values"] = defined_null_values
         
-        lazy_frame = pl.scan_csv(os.path.join(global_settings.root_folder, normalize_path(self.file)), **scan_kwargs)
+        if self.n_rows is not None:
+            scan_kwargs["n_rows"] = self.n_rows
+
+        if self.infer_schema is not None:
+            scan_kwargs["infer_schema"] = self.infer_schema
+
+        if self.ignore_errors is not None:
+            scan_kwargs["ignore_errors"] = self.ignore_errors
+
+        file_path = os.path.join(global_settings.root_folder, normalize_path(self.file))
+        lazy_frame = self._do_scan(file_path, scan_kwargs)
         
         updated_table_space = table_space.copy()
         updated_table_space[self.name] = lazy_frame
         
         return updated_table_space, []
+
+class ReadCsv(BaseReadLogic, tag="read_csv"):
+    """
+    PStep to read data from a CSV file into the tablespace.
+    Corresponds to the ReadCsvStep in the TypeScript definitions.
+    """
+    file: str  # Path to the CSV file
+    name: str  # Name to assign to the loaded DataFrame in the tablespace
+
+    delimiter: Optional[str] = None
+    schema: Optional[List[ColumnSchema]] = None
+    infer_schema: Optional[bool] = None
+    ignore_errors: Optional[bool] = None
+    n_rows: Optional[int] = None
+
+    def _do_scan(self, file_path: str, scan_kwargs: Dict[str, Any]) -> pl.LazyFrame:
+        """
+        Prepares a Polars scan plan to read the CSV file.
+        """
+        if self.delimiter is not None:
+            scan_kwargs["separator"] = self.delimiter
+    
+        return pl.scan_csv(file_path, **scan_kwargs)
+
+class ReadNdjson(BaseReadLogic, tag="read_ndjson"):
+    """
+    PStep to read data from an NDJSON file into the tablespace.
+    Corresponds to the ReadNdjsonStep in the TypeScript definitions.
+    """
+    file: str  # Path to the NDJSON file
+    name: str  # Name to assign to the loaded DataFrame in the tablespace
+
+    schema: Optional[List[ColumnSchema]] = None
+    infer_schema: Optional[bool] = None
+    ignore_errors: Optional[bool] = None
+    n_rows: Optional[int] = None
+
+    def _do_scan(self, file_path: str, scan_kwargs: Dict[str, Any]) -> pl.LazyFrame:
+        """
+        Prepares a Polars scan plan to read the NDJSON file.
+        """
+        return pl.scan_ndjson(file_path, **scan_kwargs)
 
 class BaseWriteLogic(PStep):
     """
@@ -112,14 +169,11 @@ class WriteCsv(BaseWriteLogic, tag="write_csv"):
     PStep to write a table from the tablespace to a CSV file.
     Corresponds to the WriteCsvStep in the TypeScript definitions.
     """
-    # Fields for msgspec - these are also "known" to BaseWriteLogic via type hints
     table: str  # Name of the table in the tablespace to write
     file: str   # Path to the output CSV file
 
     columns: Optional[List[str]] = None  # Optional: List of column names to write
     delimiter: Optional[str] = None      # Optional: The delimiter character for the output CSV
-
-    # execute method is inherited from BaseWriteLogic
 
     def _do_sink(self, selected_lf: pl.LazyFrame, output_path: str) -> pl.LazyFrame:
         """
@@ -138,29 +192,36 @@ class WriteCsv(BaseWriteLogic, tag="write_csv"):
             **sink_kwargs
         )
 
-class WriteJson(BaseWriteLogic, tag="write_json"):
-    """
-    PStep to write a table from the tablespace to a JSON Lines file.
-    Uses Polars' sink_ndjson for lazy writing.
-    (Corresponds to a hypothetical WriteJsonStep in TypeScript definitions).
-    """
-    # Fields for msgspec
-    table: str  # Name of the table in the tablespace to write
-    file: str   # Path to the output JSON file
-    columns: Optional[List[str]] = None  # Optional: List of column names to write
-    # maintain_order: bool = True # Example: if we wanted to expose sink_ndjson's maintain_order
+# Not yet supported, should be a normal write_json, but we don't have a lazy sink_json, can create a workaround
+# if needed.
+# class WriteJson(BaseWriteLogic, tag="write_json"):
+#     """
+#     PStep to write a table from the tablespace to a JSON Lines file.
+#     Uses Polars' sink_ndjson for lazy writing.
+#     (Corresponds to a hypothetical WriteJsonStep in TypeScript definitions).
+#     """
+#     table: str  # Name of the table in the tablespace to write
+#     file: str   # Path to the output JSON file
+#     columns: Optional[List[str]] = None  # Optional: List of column names to write
 
-    # execute method is inherited from BaseWriteLogic
+#     def _do_sink(self, selected_lf: pl.LazyFrame, output_path: str) -> pl.LazyFrame:
+#         """
+#         Prepares a Polars plan to write the selected LazyFrame to a JSON Lines file.
+#         """
+#         return selected_lf.sink_ndjson(path=output_path, lazy=True)
+
+class WriteNdjson(BaseWriteLogic, tag="write_ndjson"):
+    """
+    PStep to write a table from the tablespace to an NDJSON file.
+    Uses Polars' sink_ndjson for lazy writing.
+    Corresponds to the WriteNdjsonStep in TypeScript definitions.
+    """
+    table: str  # Name of the table in the tablespace to write
+    file: str   # Path to the output NDJSON file
+    columns: Optional[List[str]] = None  # Optional: List of column names to write
 
     def _do_sink(self, selected_lf: pl.LazyFrame, output_path: str) -> pl.LazyFrame:
         """
-        Prepares a Polars plan to write the selected LazyFrame to a JSON Lines file.
+        Prepares a Polars plan to write the selected LazyFrame to an NDJSON file.
         """
-        # sink_ndjson for LazyFrame streams to a newline delimited JSON file.
-        # It implicitly returns a plan. Default maintain_order=True is used by Polars.
-        # If other sink_ndjson parameters (like maintain_order) need to be configurable,
-        # they should be added as fields to this class and passed to sink_ndjson.
-        return selected_lf.sink_ndjson(
-            path=output_path
-            # maintain_order=self.maintain_order # If maintain_order field was added
-            )
+        return selected_lf.sink_ndjson(path=output_path, lazy=True)
