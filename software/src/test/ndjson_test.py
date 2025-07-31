@@ -1,7 +1,9 @@
 import unittest
 import os
 from ptabler.workflow import PWorkflow
-from ptabler.steps import GlobalSettings, ReadCsv, ReadNdjson, WriteCsv, WriteNdjson
+from ptabler.steps import GlobalSettings, ReadCsv, ReadNdjson, WriteCsv, WriteNdjson, AddColumns
+from ptabler.steps.basics import ColumnDefinition
+from ptabler.expression import ColumnReferenceExpression, StructFieldExpression
 
 current_script_dir = os.path.dirname(os.path.abspath(__file__))
 test_data_root_dir = os.path.join(
@@ -91,7 +93,8 @@ class NdjsonTest(unittest.TestCase):
 
         write_step = WriteCsv(
             table="limited_table_from_ndjson",
-            file=f"outputs/{output_file_relative_path}"
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "category", "value1", "value2", "is_active"]
         )
 
         ptw = PWorkflow(workflow=[read_step, write_step])
@@ -186,6 +189,366 @@ class NdjsonTest(unittest.TestCase):
             with open(output_file_abs_path, 'r') as f:
                 lines = f.readlines()
                 self.assertGreater(len(lines), 0, "Output file should not be empty")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_single_extraction(self):
+        """Test extracting single fields from nested structures"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_single_field.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Add columns that extract single fields from nested structures
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="created_by",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="created_by"
+                    )
+                ),
+                ColumnDefinition(
+                    name="country",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="country"
+                    )
+                ),
+                ColumnDefinition(
+                    name="city",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="city"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "created_by", "country", "city"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain extracted nested field data
+                self.assertIn("user1", content, "Should extract created_by field")
+                self.assertIn("USA", content, "Should extract country field")
+                self.assertIn("New York", content, "Should extract city field")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_individual_extraction(self):
+        """Test extracting individual fields from the same nested structure"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_individual_fields.ndjson"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Add columns that extract multiple fields from same struct
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="location_country",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="country"
+                    )
+                ),
+                ColumnDefinition(
+                    name="location_city",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="city"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteNdjson(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "location_country", "location_city"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain struct data with multiple fields extracted separately
+                self.assertIn("location_country", content, "Should have location_country column")
+                self.assertIn("location_city", content, "Should have location_city column")
+                self.assertIn("USA", content, "Should extract country values")
+                self.assertIn("New York", content, "Should extract city values")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_nested_access(self):
+        """Test accessing deeply nested fields"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_nested_access.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Extract individual lat/lng from deeply nested structure
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="latitude",
+                    expression=StructFieldExpression(
+                        struct=StructFieldExpression(
+                            struct=ColumnReferenceExpression(name="location"),
+                            fields="coordinates"
+                        ),
+                        fields="lat"
+                    )
+                ),
+                ColumnDefinition(
+                    name="longitude",
+                    expression=StructFieldExpression(
+                        struct=StructFieldExpression(
+                            struct=ColumnReferenceExpression(name="location"),
+                            fields="coordinates"
+                        ),
+                        fields="lng"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "latitude", "longitude"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain extracted coordinate data
+                self.assertIn("40.7128", content, "Should extract latitude")
+                self.assertIn("-74.006", content, "Should extract longitude")  # Note: CSV may truncate precision
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_missing_fields(self):
+        """Test behavior when struct fields are missing in some records"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_missing_fields.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Extract fields that are missing in some records (only scalar values for CSV)
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="timestamp",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="timestamp"
+                    )
+                ),
+                ColumnDefinition(
+                    name="created_by",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="created_by"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "timestamp", "created_by"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file handles missing fields gracefully
+            with open(output_file_abs_path, 'r') as f:
+                lines = f.readlines()
+                self.assertGreater(len(lines), 1, "Should have header and data")
+                # Should process all records even with missing fields
+                self.assertEqual(len(lines), 9, "Should have 8 data rows + header")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_missing_entire_struct(self):
+        """Test behavior when entire struct object is missing"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_missing_object.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Try to extract from metadata which is completely missing in record 4
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="created_by_from_missing_struct",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="created_by"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "created_by_from_missing_struct"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Should handle missing entire struct gracefully
+            with open(output_file_abs_path, 'r') as f:
+                lines = f.readlines()
+                self.assertEqual(len(lines), 9, "Should process all records including those with missing structs")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_coordinates_with_missing_data(self):
+        """Test extracting coordinates struct when it's missing in some records"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_coordinates_missing.ndjson"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Extract coordinates struct that is missing in some records
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="coordinates_data",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="coordinates"
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteNdjson(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "coordinates_data"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file handles missing struct fields gracefully
+            with open(output_file_abs_path, 'r') as f:
+                lines = f.readlines()
+                self.assertGreater(len(lines), 1, "Should have data")
+                # Should process all records even with missing coordinates
+                self.assertEqual(len(lines), 8, "Should have 8 data rows")
 
         finally:
             if os.path.exists(output_file_abs_path):

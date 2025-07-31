@@ -7,6 +7,7 @@ from . import fuzzy
 from . import conditional
 from . import window
 from . import hash
+from . import struct
 
 from .basics import (
     GtExpression, GeExpression, EqExpression, LtExpression, LeExpression, NeqExpression, PlusExpression,
@@ -32,6 +33,9 @@ from .window import (
 )
 from .hash import (
     HashExpression,
+)
+from .struct import (
+    StructFieldExpression,
 )
 
 # Define a Union type that includes all concrete expression types
@@ -101,6 +105,8 @@ AnyExpression = typing.Union[
     # String Distance Functions
     StringDistanceExpression,
     FuzzyStringFilterExpression,
+    # Struct Operations
+    StructFieldExpression,
 ]
 
 basics.AnyExpression = AnyExpression
@@ -109,6 +115,7 @@ fuzzy.AnyExpression = AnyExpression
 conditional.AnyExpression = AnyExpression
 window.AnyExpression = AnyExpression
 hash.AnyExpression = AnyExpression
+struct.AnyExpression = AnyExpression
 
 
 __all__ = [
@@ -166,5 +173,6 @@ __all__ = [
     "WindowExpression",
     "HashExpression",
     "StringDistanceExpression",
-    "FuzzyStringFilterExpression"
+    "FuzzyStringFilterExpression",
+    "StructFieldExpression"
 ]

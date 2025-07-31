@@ -28,7 +28,8 @@ export type Expression =
   | StringExtractExpression
   | MinMaxExpression
   | FillNaExpression
-  | WindowExpression;
+  | WindowExpression
+  | StructFieldExpression;
 
 /** Represents all possible expression types in the system. */
 export type ComparisonOperator = 'gt' | 'ge' | 'eq' | 'lt' | 'le' | 'neq';
@@ -513,4 +514,21 @@ export interface WindowExpression {
   value: Expression;
   /** List of expressions to partition the data by. The aggregation is performed independently within each partition. */
   partitionBy: Expression[];
+}
+
+/**
+ * Represents a struct field access operation.
+ * This operation retrieves a single field from a struct (nested data structure).
+ * It corresponds to Polars' struct.field() functionality.
+ */
+export interface StructFieldExpression {
+  /** The type of operation, always 'struct_field'. */
+  type: 'struct_field';
+  /** The struct expression to extract fields from. */
+  struct: Expression;
+  /**
+   * The field name to extract from the struct.
+   * Currently only supports single field extraction due to Polars behavior limitations.
+   */
+  fields: string;
 }
