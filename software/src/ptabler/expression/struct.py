@@ -1,5 +1,5 @@
-import typing
 import polars as pl
+import polars.selectors as cs
 
 from .base import Expression
 
@@ -25,8 +25,25 @@ class StructFieldExpression(Expression, tag='struct_field'):
         """
         Converts the expression to a Polars struct.field expression.
         
+        Gracefully handles null struct values using conditional logic to avoid
+        schema mismatch issues that can occur with fill_null approaches.
+        
         Returns:
-            A Polars expression that extracts the specified field from the struct.
+            A Polars expression that extracts the specified field from the struct,
+            returning null for records where the struct or field is missing.
         """
         polars_struct = self.struct.to_polars()
-        return polars_struct.struct.field(self.fields)
+
+        # return pl.struct([polars_struct.struct.field(f'^{self.fields}.*$'), pl.lit(None)]).struct[0] # pl.when(polars_struct.is_null()).then(pl.lit(None)).otherwise()
+        # return pl.coalesce(polars_struct.struct.field(f'^{self.fields}$'), pl.lit(1)) # pl.when(polars_struct.is_null()).then(pl.lit(None)).otherwise()
+        # return pl.struct(polars_struct.struct.field(f'^{self.fields}$'), pl.lit(1)).struct[0] # pl.when(polars_struct.is_null()).then(pl.lit(None)).otherwise()
+        # return pl.when(polars_struct.is_null()).then(pl.struct(___dummy=pl.lit(None))).otherwise(polars_struct.struct.field(self.fields))
+        # return pl.when(polars_struct.is_null()).then(pl.struct(___dummy=pl.lit(None))).otherwise(polars_struct).struct.field(self.fields)
+        # return polars_struct.struct.field(f'^{self.fields}$').unnest().first(strict=False)
+        # return polars_struct.struct.unnest().field(f'^{self.fields}$').unnest().first(strict=False)
+        # safe_struct = pl.struct(pl.lit(1).alias('___dummy'))
+        # polars_struct.pipe
+        # safe_struct = pl.when(polars_struct.is_null()).then(pl.struct([pl.lit(1).alias('___dummy')])).otherwise(polars_struct)
+        # return pl.fold(pl.lit(None), lambda acc, x: x, [pl.lit(None), polars_struct.struct.field(f'^{self.fields}$')])
+        # return pl.reduce(lambda a, b: b, [pl.lit(None), polars_struct.struct.field(f'^{self.fields}$')])
+        return polars_struct.map_elements(lambda x: x.get(self.fields) if x is not None else None, skip_nulls=False)

@@ -554,5 +554,79 @@ class NdjsonTest(unittest.TestCase):
             if os.path.exists(output_file_abs_path):
                 os.remove(output_file_abs_path)
 
+    def test_struct_field_deeply_nested_nonexistent_fields(self):
+        """Test behavior when trying to access deeply nested fields from non-existent root fields"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_deeply_nested_nonexistent.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Try to extract deeply nested fields from completely non-existent root fields
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="deeply_nested_nonexistent",
+                    expression=StructFieldExpression(
+                        struct=StructFieldExpression(
+                            struct=StructFieldExpression(
+                                struct=ColumnReferenceExpression(name="location"),
+                                fields="evenMoreNonExistentField"
+                            ),
+                            fields="andNestedNonExistentField"
+                        ),
+                        fields="finalNonExistentField"
+                    )
+                ),
+                ColumnDefinition(
+                    name="mixed_existing_nonexistent",
+                    expression=StructFieldExpression(
+                        struct=StructFieldExpression(
+                            struct=ColumnReferenceExpression(name="metadata"),  # This exists
+                            fields="nonExistentSubField"  # But this doesn't
+                        ),
+                        fields="evenDeeperNonExistent"  # And this definitely doesn't
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "deeply_nested_nonexistent", "mixed_existing_nonexistent"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file handles deeply nested non-existent fields gracefully
+            with open(output_file_abs_path, 'r') as f:
+                lines = f.readlines()
+                self.assertGreater(len(lines), 1, "Should have header and data")
+                # Should process all records even with deeply nested non-existent fields
+                self.assertEqual(len(lines), 9, "Should have 8 data rows + header")
+                
+                # Verify that the content contains the expected column headers
+                header = lines[0].strip()
+                self.assertIn("deeply_nested_nonexistent", header, "Should have deeply_nested_nonexistent column")
+                self.assertIn("mixed_existing_nonexistent", header, "Should have mixed_existing_nonexistent column")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
 if __name__ == '__main__':
     unittest.main()
