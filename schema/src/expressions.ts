@@ -520,6 +520,9 @@ export interface WindowExpression {
  * Represents a struct field access operation.
  * This operation retrieves a single field from a struct (nested data structure).
  * It corresponds to Polars' struct.field() functionality.
+ *
+ * When fields is an array, the operation performs recursive field access,
+ * where each element in the array represents a level in the nested structure.
  */
 export interface StructFieldExpression {
   /** The type of operation, always 'struct_field'. */
@@ -527,8 +530,20 @@ export interface StructFieldExpression {
   /** The struct expression to extract fields from. */
   struct: Expression;
   /**
-   * The field name to extract from the struct.
-   * Currently only supports single field extraction due to Polars behavior limitations.
+   * The field name(s) to extract from the struct.
+   * - If a string, extracts a single field from the struct.
+   * - If an array, performs recursive field access where each element represents a level in the nested structure.
    */
-  fields: string;
+  fields: string | string[];
+  /**
+   * Optional expected data type for the returned value.
+   * This can be used for type validation or casting of the extracted field.
+   */
+  dtype?: DataType;
+  /**
+   * Optional default value to return if the field is not found or is null.
+   * If not provided and the field is missing, the operation returns null.
+   * Only constant scalar values are supported.
+   */
+  default?: string | number | boolean | null;
 }
