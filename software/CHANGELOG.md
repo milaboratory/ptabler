@@ -1,5 +1,16 @@
 # @platforma-open/software-ptabler
 
+## 1.12.0
+
+### Minor Changes
+
+- a1a96cb: Enhanced struct_field expression with recursive field access, default values, and type casting
+
+  - Support recursive field access using arrays: `fields: ["location", "coordinates", "lat"]`
+  - Add optional `dtype` parameter for automatic type casting of extracted values
+  - Add optional `default` parameter with scalar values for missing fields
+  - Maintain full backward compatibility with existing single field access
+
 ## 1.11.0
 
 ### Minor Changes
