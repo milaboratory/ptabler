@@ -628,5 +628,343 @@ class NdjsonTest(unittest.TestCase):
             if os.path.exists(output_file_abs_path):
                 os.remove(output_file_abs_path)
 
+    def test_struct_field_recursive_array_access(self):
+        """Test recursive field access using arrays instead of nested StructFieldExpression calls"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_recursive_array.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Use recursive field access with arrays instead of nested StructFieldExpression calls
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="latitude_array_access",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["coordinates", "lat"]  # Array for recursive access
+                    )
+                ),
+                ColumnDefinition(
+                    name="longitude_array_access",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["coordinates", "lng"]  # Array for recursive access
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "latitude_array_access", "longitude_array_access"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain extracted coordinate data using array access
+                self.assertIn("40.7128", content, "Should extract latitude using array access")
+                self.assertIn("-74.006", content, "Should extract longitude using array access")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_default_values(self):
+        """Test default values when fields are missing"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_defaults.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Extract fields with default values for missing data
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="timestamp_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="timestamp",
+                        default="2023-01-01T00:00:00Z"  # String default
+                    )
+                ),
+                ColumnDefinition(
+                    name="missing_field_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="nonexistent_field",
+                        default="default_value"  # String default for missing field
+                    )
+                ),
+                ColumnDefinition(
+                    name="missing_numeric_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="elevation",  # This field doesn't exist
+                        default=0  # Numeric default
+                    )
+                ),
+                ColumnDefinition(
+                    name="missing_bool_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="is_verified",  # This field doesn't exist
+                        default=False  # Boolean default
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "timestamp_with_default", "missing_field_with_default", 
+                    "missing_numeric_with_default", "missing_bool_with_default"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain default values for missing fields
+                self.assertIn("2023-01-01T00:00:00Z", content, "Should use string default for missing timestamp")
+                self.assertIn("default_value", content, "Should use string default for missing field")
+                self.assertIn("0", content, "Should use numeric default for missing elevation")
+                self.assertIn("false", content, "Should use boolean default for missing field")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_recursive_array_with_defaults(self):
+        """Test recursive array access with default values for deeply nested missing fields"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_recursive_defaults.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Use recursive field access with defaults for missing nested fields
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="altitude_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["coordinates", "altitude"],  # This nested field doesn't exist
+                        default=100.0  # Numeric default for missing deeply nested field
+                    )
+                ),
+                ColumnDefinition(
+                    name="deep_missing_with_default",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["nonexistent", "also_missing", "deeply_missing"],  # All missing
+                        default="not_found"  # String default for completely missing path
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "altitude_with_default", "deep_missing_with_default"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain default values for missing nested fields
+                self.assertIn("100.0", content, "Should use numeric default for missing nested altitude")
+                self.assertIn("not_found", content, "Should use string default for completely missing nested path")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_dtype_casting(self):
+        """Test dtype casting for extracted fields"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_dtype_casting.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Extract fields with specific data type casting
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="latitude_as_string",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["coordinates", "lat"],
+                        dtype="String"  # Cast numeric to string
+                    )
+                ),
+                ColumnDefinition(
+                    name="created_by_as_string",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields="created_by",  # Single field access with casting
+                        dtype="String"  # Cast to string
+                    )
+                ),
+                ColumnDefinition(
+                    name="country_as_string",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields="country",  # Extract country from location struct
+                        dtype="String"  # Cast to string
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "latitude_as_string", "created_by_as_string", "country_as_string"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                lines = f.readlines()
+                self.assertGreater(len(lines), 1, "Should have header and data")
+                # Should process all records with proper type casting
+                self.assertEqual(len(lines), 9, "Should have 8 data rows + header")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+    def test_struct_field_combined_features(self):
+        """Test combining recursive array access, default values, and dtype casting"""
+        input_file_relative_path = "test_data_1.ndjson"
+        output_file_relative_path = "output_struct_combined_features.csv"
+
+        output_file_abs_path = os.path.join(test_data_root_dir, "outputs", output_file_relative_path)
+
+        read_step = ReadNdjson(
+            file=input_file_relative_path,
+            name="input_data"
+        )
+
+        # Combine all new features: recursive access + defaults + dtype casting
+        add_columns_step = AddColumns(
+            table="input_data",
+            columns=[
+                ColumnDefinition(
+                    name="combined_feature_test",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="location"),
+                        fields=["details", "population"],  # Recursive access to missing nested field
+                        default=1000000,  # Numeric default
+                        dtype="Int64"  # Cast to integer
+                    )
+                ),
+                ColumnDefinition(
+                    name="string_combined_test",
+                    expression=StructFieldExpression(
+                        struct=ColumnReferenceExpression(name="metadata"),
+                        fields=["info", "description"],  # Recursive access to missing nested field
+                        default="No description available",  # String default
+                        dtype="String"  # Cast to string
+                    )
+                )
+            ]
+        )
+
+        write_step = WriteCsv(
+            table="input_data",
+            file=f"outputs/{output_file_relative_path}",
+            columns=["id", "name", "combined_feature_test", "string_combined_test"]
+        )
+
+        ptw = PWorkflow(workflow=[read_step, add_columns_step, write_step])
+
+        if os.path.exists(output_file_abs_path):
+            os.remove(output_file_abs_path)
+
+        try:
+            ptw.execute(global_settings=global_settings)
+            self.assertTrue(os.path.exists(output_file_abs_path),
+                            f"Output file was not created at {output_file_abs_path}")
+
+            # Read and verify the output file
+            with open(output_file_abs_path, 'r') as f:
+                content = f.read()
+                # Should contain default values with proper type casting
+                self.assertIn("1000000", content, "Should use numeric default with integer casting")
+                self.assertIn("No description available", content, "Should use string default with string casting")
+
+        finally:
+            if os.path.exists(output_file_abs_path):
+                os.remove(output_file_abs_path)
+
+
 if __name__ == '__main__':
     unittest.main()
